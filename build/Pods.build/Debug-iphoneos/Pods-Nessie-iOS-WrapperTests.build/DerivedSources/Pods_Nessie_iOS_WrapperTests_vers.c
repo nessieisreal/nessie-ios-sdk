@@ -1,1 +1,0 @@
- const unsigned char Pods_Nessie_iOS_WrapperTestsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:Pods_Nessie_iOS_WrapperTests  PROJECT:Pods-1" "\n"; const double Pods_Nessie_iOS_WrapperTestsVersionNumber __attribute__ ((used)) = (double)1.;
