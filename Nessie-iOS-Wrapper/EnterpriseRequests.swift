@@ -43,9 +43,13 @@ public struct EnterpriseAccountRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -59,9 +63,13 @@ public struct EnterpriseAccountRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -84,9 +92,14 @@ public struct EnterpriseBillRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Bill>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -100,9 +113,13 @@ public struct EnterpriseBillRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Bill>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -125,9 +142,14 @@ public struct EnterpriseCustomerRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Customer>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -141,9 +163,13 @@ public struct EnterpriseCustomerRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Customer>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -166,9 +192,14 @@ public struct EnterpriseDepositRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Deposit>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -182,9 +213,13 @@ public struct EnterpriseDepositRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Deposit>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -207,9 +242,14 @@ public struct EnterpriseMerchantRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Merchant>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -223,9 +263,13 @@ public struct EnterpriseMerchantRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Merchant>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -248,9 +292,14 @@ public struct EnterpriseTransferRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Transfer>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -264,9 +313,13 @@ public struct EnterpriseTransferRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Transfer>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -289,9 +342,14 @@ public struct EnterpriseWithdrawalRequest: Enterprise {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Withdrawal>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -305,9 +363,13 @@ public struct EnterpriseWithdrawalRequest: Enterprise {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Withdrawal>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }

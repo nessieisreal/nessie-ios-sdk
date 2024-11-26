@@ -69,12 +69,16 @@ open class NSEClient {
                 if (200 ... 299 ~= httpResponse.statusCode) {
                     completion(data, nil)
                 } else {
-                    let json = JSON(data: data!)
-                    let errorMessage = json["message"].string ?? "Something went wrong. Check your connection."
-                    let culprit = json["culprit"].array
-                    let culpritMessage: String = culprit?.first?.rawString() ?? "Unknown reason"
-                    let statusError = NSError(domain:"com.nessie", code:httpResponse.statusCode, userInfo:[NSLocalizedDescriptionKey : errorMessage, NSLocalizedFailureReasonErrorKey : culpritMessage])
-                    completion(nil, statusError)
+                    do {
+                        let json = try JSON(data: data ?? Data())
+                        let errorMessage = json["message"].string ?? "Something went wrong. Check your connection."
+                        let culprit = json["culprit"].array
+                        let culpritMessage: String = culprit?.first?.rawString() ?? "Unknown reason"
+                        let statusError = NSError(domain:"com.nessie", code:httpResponse.statusCode, userInfo:[NSLocalizedDescriptionKey : errorMessage, NSLocalizedFailureReasonErrorKey : culpritMessage])
+                        completion(nil, statusError)
+                    } catch let error as NSError {
+                        completion(nil, error)
+                    }
                 }
             }
         }
@@ -92,8 +96,12 @@ open class NSEClient {
             if (error != nil) {
                 return
             } else {
-                let json = JSON(data: data!)
-                handler(BaseClass(data: json))
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    handler(BaseClass(data: json))
+                } catch let error as NSError {
+                    print(error)
+                }
             }
         })
     }

@@ -97,9 +97,14 @@ open class AccountRequest {
                     completion(nil, genericError)
                     return
                 }
-                let json = JSON(data: data)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
+                
+                do {
+                    let json = try JSON(data: data)
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -114,9 +119,13 @@ open class AccountRequest {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.object, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response.object, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -131,9 +140,13 @@ open class AccountRequest {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response.requestArray, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -160,9 +173,13 @@ open class AccountRequest {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
@@ -190,9 +207,13 @@ open class AccountRequest {
             if (error != nil) {
                 completion(nil, error)
             } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response, nil)
+                do {
+                    let json = try JSON(data: data ?? Data())
+                    let response = BaseResponse<Account>(data: json)
+                    completion(response, nil)
+                } catch let error as NSError {
+                    completion(nil, error)
+                }
             }
         })
     }
