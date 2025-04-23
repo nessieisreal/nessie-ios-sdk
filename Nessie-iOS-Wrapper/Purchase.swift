@@ -159,7 +159,7 @@ open class PurchaseRequest {
         requestType = HTTPType.POST
         self.accountId = accountId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         var params: Dictionary<String, AnyObject> = ["medium": newPurchase.medium.rawValue as AnyObject,
                                                      "merchant_id": newPurchase.merchantId as AnyObject,
                                                      "amount": newPurchase.amount as AnyObject]
@@ -197,7 +197,7 @@ open class PurchaseRequest {
         requestType = HTTPType.PUT
         purchaseId = updatedPurchase.purchaseId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         var params: Dictionary<String, AnyObject> = ["medium": updatedPurchase.medium.rawValue as AnyObject,
                                                      "amount": updatedPurchase.amount as AnyObject]

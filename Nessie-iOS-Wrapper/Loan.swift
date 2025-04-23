@@ -112,7 +112,7 @@ open class LoanRequest {
         requestType = HTTPType.POST
         self.accountId = accountId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         var params: Dictionary<String, Any> = ["type": newLoan.type.rawValue,
                                                "status": newLoan.status.rawValue,
@@ -146,7 +146,7 @@ open class LoanRequest {
         requestType = HTTPType.PUT
         loanId = updatedLoan.loanId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         var params: Dictionary<String, Any> = ["type": updatedLoan.type.rawValue,
                                                "status": updatedLoan.status.rawValue,

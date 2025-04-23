@@ -111,7 +111,7 @@ open class CustomerRequest {
         self.requestType = HTTPType.POST
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         let address = ["street_number": newCustomer.address.streetNumber,
                        "street_name": newCustomer.address.streetName,
@@ -146,7 +146,7 @@ open class CustomerRequest {
         customerId = updatedCustomer.customerId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         let address = ["street_number": updatedCustomer.address.streetNumber,
                        "street_name": updatedCustomer.address.streetName,

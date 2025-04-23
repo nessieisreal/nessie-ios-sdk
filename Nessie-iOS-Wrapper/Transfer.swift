@@ -141,7 +141,7 @@ open class TransferRequest {
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         // construct request body
         // required values: medium, payee_id, amount
@@ -187,7 +187,7 @@ open class TransferRequest {
         transferId = updatedTransfer.transferId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         var params: Dictionary<String, AnyObject> =
             ["medium": updatedTransfer.medium.rawValue as AnyObject,

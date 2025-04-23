@@ -9,14 +9,14 @@
 import Foundation
 import SwiftyJSON
 
-public enum AccountType: String {
+public enum AccountType: String, Decodable {
     case CreditCard = "Credit Card"
     case Savings
     case Checking
     case Unknown = ""
 }
 
-open class Account: JsonParser {
+public struct Account: Decodable, JsonParser {
     
     public var accountId: String
     public var accountType: AccountType
@@ -25,6 +25,15 @@ open class Account: JsonParser {
     public var balance: Int
     public var accountNumber: String?
     public var customerId: String
+    
+    enum CodingKeys: String, CodingKey {
+        case nickname, rewards, balance
+
+        case accountId = "_id"
+        case accountType = "type"
+        case accountNumber = "account_number"
+        case customerId = "customer_id"
+    }
     
     public init(accountId: String, accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String?, customerId: String) {
         self.accountId = accountId
@@ -36,7 +45,7 @@ open class Account: JsonParser {
         self.customerId = customerId
     }
     
-    public required init(data: JSON) {
+    public init(data: JSON) {
         self.accountId = data["_id"].string ?? ""
         self.accountType = AccountType(rawValue: data["type"].string ?? "")!
         self.nickname = data["nickname"].string ?? ""
@@ -83,25 +92,29 @@ open class AccountRequest {
     }
     
     // APIs
-    open func getAccounts(_ accountType: AccountType?, completion:@escaping (_ accountsArrays: Array<Account>?, _ error: NSError?) -> Void) {
+    open func getAccounts(_ accountType: AccountType?) async throws -> [Account]? {
         requestType = HTTPType.GET
         self.accountType = accountType
-
+        
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let accounts = try JSONDecoder().decode([Account].self, from: data)
+        return accounts
+
+//        , completion: {(data, error) -> Void in
+//            if (error != nil) {
+//                completion(nil, error)
+//            } else {
+//                guard let data = data else {
+//                    completion(nil, genericError)
+//                    return
+//                }
+//                let json = JSON(data: data)
+//                let response = BaseResponse<Account>(data: json)
+//                completion(response.requestArray, nil)
+//            }
+//        })
     }
 
     open func getAccount(_ accountId: String, completion: @escaping (_ account:Account?, _ error: NSError?) -> Void) {
@@ -143,7 +156,7 @@ open class AccountRequest {
         self.customerId = newAccount.customerId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         var params: Dictionary<String, AnyObject> = ["nickname": newAccount.nickname as AnyObject, "type":newAccount.accountType.rawValue as AnyObject, "balance": newAccount.balance as AnyObject, "rewards": newAccount.rewards as AnyObject]
         if let accountNumber = newAccount.accountNumber as String? {
             params["account_number"] = accountNumber as AnyObject?
@@ -172,7 +185,7 @@ open class AccountRequest {
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
 
         var params: Dictionary<String, AnyObject> = ["nickname": nickname as AnyObject]
         if let newAccountNumber = accountNumber as String? {

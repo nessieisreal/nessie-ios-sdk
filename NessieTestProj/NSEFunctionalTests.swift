@@ -13,15 +13,15 @@ import NessieFmwk
 class AccountTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetAccounts()
+        await self.testGetAccounts()
     }
     
-    func testGetAccounts() {
+    func testGetAccounts() async {
         let accountType = AccountType.Savings
         
-        AccountRequest().getAccounts(accountType, completion:{(response, error) in
+        await AccountRequest().getAccounts(accountType, completion:{(response, error) in
             if (error != nil) {
                 print(error!)
             } else {

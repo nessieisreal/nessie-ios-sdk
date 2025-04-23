@@ -117,7 +117,7 @@ open class DepositRequest {
         requestType = HTTPType.POST
         self.accountId = accountId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
                 
         var params: Dictionary<String, AnyObject> = ["medium": newDeposit.medium.rawValue as AnyObject,
                                                      "amount": newDeposit.amount as AnyObject]
@@ -155,7 +155,7 @@ open class DepositRequest {
         requestType = HTTPType.PUT
         depositId = updatedDeposit.depositId
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         var params: Dictionary<String, AnyObject> = ["medium": updatedDeposit.medium.rawValue as AnyObject,
                                                      "amount": updatedDeposit.amount as AnyObject]

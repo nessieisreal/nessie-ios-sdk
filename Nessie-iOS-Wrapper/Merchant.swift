@@ -102,7 +102,7 @@ open class MerchantRequest {
         self.requestType = HTTPType.POST
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         let address = ["street_number": newMerchant.address.streetNumber,
                        "street_name": newMerchant.address.streetName,
@@ -140,7 +140,7 @@ open class MerchantRequest {
         merchantId = updatedMerchant.merchantId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         let address = ["street_number": updatedMerchant.address.streetNumber,
                        "street_name": updatedMerchant.address.streetName,

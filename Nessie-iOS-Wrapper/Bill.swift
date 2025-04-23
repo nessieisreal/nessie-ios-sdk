@@ -159,7 +159,7 @@ open class BillRequest {
         self.accountId = newBill.accountId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
         
         var params: Dictionary<String, AnyObject> = ["status": newBill.status.rawValue as AnyObject, "payee": newBill.payee as AnyObject, "payment_amount": newBill.paymentAmount as AnyObject]
 
@@ -202,7 +202,7 @@ open class BillRequest {
         self.billId = updatedBill.billId
 
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
         
         var params: Dictionary<String, AnyObject> = ["status": updatedBill.status.rawValue as AnyObject, "payee": updatedBill.payee as AnyObject, "payment_amount": updatedBill.paymentAmount as AnyObject]
         
