@@ -9,21 +9,21 @@
 import Foundation
 import SwiftyJSON
 
-public enum AccountType: String, Decodable {
+public enum AccountType: String, Decodable, Encodable {
     case CreditCard = "Credit Card"
     case Savings
     case Checking
     case Unknown = ""
 }
 
-public struct Account: Decodable, JsonParser {
+public struct Account: Decodable {
     
     public var accountId: String
     public var accountType: AccountType
     public var nickname: String
     public var rewards: Int
     public var balance: Int
-    public var accountNumber: String?
+    public var accountNumber: String
     public var customerId: String
     
     enum CodingKeys: String, CodingKey {
@@ -34,26 +34,48 @@ public struct Account: Decodable, JsonParser {
         case accountNumber = "account_number"
         case customerId = "customer_id"
     }
+}
+
+public struct AccountPostData: Codable {
+    public var accountType: AccountType
+    public var nickname: String
+    public var rewards: Int
+    public var balance: Int
+    public var accountNumber: String
     
-    public init(accountId: String, accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String?, customerId: String) {
-        self.accountId = accountId
-        self.accountType = accountType
-        self.nickname = nickname
-        self.rewards = rewards
-        self.balance = balance
-        self.accountNumber = accountNumber
-        self.customerId = customerId
+    enum CodingKeys: String, CodingKey {
+        case nickname, rewards, balance
+        case accountType = "type"
+        case accountNumber = "account_number"
     }
+}
+
+public struct AccountPostResponse: Decodable {
+    public var code: Int
+    public var message: String
+    public var culprit: [String]?
+    public var objectCreated: Account?
+}
+
+public struct AccountPutData: Codable {
+    public var nickname: String
+    public var accountNumber: String
     
-    public init(data: JSON) {
-        self.accountId = data["_id"].string ?? ""
-        self.accountType = AccountType(rawValue: data["type"].string ?? "")!
-        self.nickname = data["nickname"].string ?? ""
-        self.rewards = data["rewards"].int ?? 0
-        self.balance = data["balance"].int ?? 0
-        self.accountNumber = data["account_number"].string ?? nil
-        self.customerId = data["customer_id"].string ?? ""
+    enum CodingKeys: String, CodingKey {
+        case nickname
+        case accountNumber = "account_number"
     }
+}
+
+public struct AccountPutResponse: Decodable {
+    public var code: Int
+    public var message: String
+    public var culprit: [String]?
+}
+
+public struct AccountDeleteResponse: Decodable {
+    public var code: Int
+    public var message: String
 }
 
 open class AccountRequest {
@@ -101,128 +123,79 @@ open class AccountRequest {
         guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
         let accounts = try JSONDecoder().decode([Account].self, from: data)
         return accounts
-
-//        , completion: {(data, error) -> Void in
-//            if (error != nil) {
-//                completion(nil, error)
-//            } else {
-//                guard let data = data else {
-//                    completion(nil, genericError)
-//                    return
-//                }
-//                let json = JSON(data: data)
-//                let response = BaseResponse<Account>(data: json)
-//                completion(response.requestArray, nil)
-//            }
-//        })
     }
 
-    open func getAccount(_ accountId: String, completion: @escaping (_ account:Account?, _ error: NSError?) -> Void) {
+    open func getAccount(_ accountId: String) async throws -> Account? {
         self.requestType = HTTPType.GET
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let account = try JSONDecoder().decode(Account.self, from: data)
+        return account
     }
 
-    open func getCustomerAccounts(_ customerId: String, completion: @escaping (_ accountsArrays: Array<Account>?, _ error: NSError?) -> Void) {
+    open func getCustomerAccounts(_ customerId: String) async throws -> [Account]? {
         self.requestType = HTTPType.GET
         self.customerId = customerId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let customerAccounts = try JSONDecoder().decode([Account].self, from: data)
+        return customerAccounts
     }
 
-    open func postAccount(_ newAccount: Account, completion: @escaping (_ accountResponse: BaseResponse<Account>?, _ error: NSError?) -> Void) {
+    open func postAccount(_ newAccount: Account) async throws -> AccountPostResponse? {
         self.requestType = HTTPType.POST
         self.customerId = newAccount.customerId
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        var params: Dictionary<String, AnyObject> = ["nickname": newAccount.nickname as AnyObject, "type":newAccount.accountType.rawValue as AnyObject, "balance": newAccount.balance as AnyObject, "rewards": newAccount.rewards as AnyObject]
-        if let accountNumber = newAccount.accountNumber as String? {
-            params["account_number"] = accountNumber as AnyObject?
-        }
+        var accountPostData = AccountPostData(accountType: newAccount.accountType, nickname: newAccount.nickname, rewards: newAccount.rewards, balance: newAccount.balance, accountNumber: newAccount.accountNumber)
         
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(accountPostData)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let accountPostResponse = try JSONDecoder().decode(AccountPostResponse.self, from: data)
+        return accountPostResponse
     }
 
-    open func putAccount(_ accountId: String, nickname: String, accountNumber: String?, completion: @escaping (_ accountResponse: BaseResponse<Account>?, _ error: NSError?) -> Void) {
+    open func putAccount(_ accountId: String, nickname: String, accountNumber: String) async throws -> AccountPutResponse? {
         self.requestType = HTTPType.PUT
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-
-        var params: Dictionary<String, AnyObject> = ["nickname": nickname as AnyObject]
-        if let newAccountNumber = accountNumber as String? {
-            params["account_number"] = newAccountNumber as AnyObject?
-        }
+        var accountPutData = AccountPutData(nickname: nickname, accountNumber: accountNumber)
         
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(accountPutData)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let accountPutResponse = try JSONDecoder().decode(AccountPutResponse.self, from: data)
+        return accountPutResponse
     }
     
-    open func deleteAccount(_ accountId: String, completion: @escaping (_ accountResponse: BaseResponse<Account>?, _ error: NSError?) -> Void) {
+    open func deleteAccount(_ accountId: String) async throws -> AccountDeleteResponse? {
         self.requestType = HTTPType.DELETE
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let response = BaseResponse<Account>(requestArray: nil, object: nil, message: "Account deleted")
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        guard !data.isEmpty else {
+            return AccountDeleteResponse(code: 204, message: "Account Deleted")
+        }
+        let accountDeleteResponse = try JSONDecoder().decode(AccountDeleteResponse.self, from: data)
+        return accountDeleteResponse
     }
 }

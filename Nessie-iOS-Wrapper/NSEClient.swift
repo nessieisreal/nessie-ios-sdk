@@ -61,34 +61,46 @@ open class NSEClient {
     open func loadDataFromURL(_ request: URLRequest) async throws -> Data? {
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
-            return nil
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            let statusError = NSError(domain: "com.nessie", code: -1, userInfo:[NSLocalizedDescriptionKey : "Something went wrong. Check your connection.", NSLocalizedFailureReasonErrorKey : "Unknown reason"])
+            throw statusError
         }
         
+        guard (200...299).contains(statusCode) else {
+            let json = JSON(data: data)
+            let errorMessage = json["message"].string ?? "Something went wrong. Check your connection."
+            let culprit = json["culprit"].array
+            let culpritMessage: String = culprit?.first?.rawString() ?? "Unknown reason"
+            let statusError = NSError(domain: "com.nessie", code: statusCode, userInfo:[NSLocalizedDescriptionKey : errorMessage, NSLocalizedFailureReasonErrorKey : culpritMessage])
+            throw statusError
+        }
+        
+        
         return data
-        
-        
-//        let session = URLSession.shared
+    }
+    
+    open func loadDataFromURL(_ request: URLRequest, completion:@escaping (_ data: Data?, _ error: NSError?) -> Void) {
+        let session = URLSession.shared
         
         // Use NSURLSession to get data from an NSURL
-//        let loadDataTask = session.dataTask(with: request as URLRequest) { data, response, error in
-//            if let responseError = error as NSError? {
-//                completion(nil, responseError)
-//            } else if let httpResponse = response as? HTTPURLResponse {
-//                if (200 ... 299 ~= httpResponse.statusCode) {
-//                    completion(data, nil)
-//                } else {
-//                    let json = JSON(data: data!)
-//                    let errorMessage = json["message"].string ?? "Something went wrong. Check your connection."
-//                    let culprit = json["culprit"].array
-//                    let culpritMessage: String = culprit?.first?.rawString() ?? "Unknown reason"
-//                    let statusError = NSError(domain:"com.nessie", code:httpResponse.statusCode, userInfo:[NSLocalizedDescriptionKey : errorMessage, NSLocalizedFailureReasonErrorKey : culpritMessage])
-//                    completion(nil, statusError)
-//                }
-//            }
-//        }
-//        
-//        loadDataTask.resume()
+        let loadDataTask = session.dataTask(with: request as URLRequest) { data, response, error in
+            if let responseError = error as NSError? {
+                completion(nil, responseError)
+            } else if let httpResponse = response as? HTTPURLResponse {
+                if (200 ... 299 ~= httpResponse.statusCode) {
+                    completion(data, nil)
+                } else {
+                    let json = JSON(data: data!)
+                    let errorMessage = json["message"].string ?? "Something went wrong. Check your connection."
+                    let culprit = json["culprit"].array
+                    let culpritMessage: String = culprit?.first?.rawString() ?? "Unknown reason"
+                    let statusError = NSError(domain:"com.nessie", code:httpResponse.statusCode, userInfo:[NSLocalizedDescriptionKey : errorMessage, NSLocalizedFailureReasonErrorKey : culpritMessage])
+                    completion(nil, statusError)
+                }
+            }
+        }
+        
+        loadDataTask.resume()
     }
     
     

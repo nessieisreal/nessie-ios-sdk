@@ -19,93 +19,86 @@ class AccountTests {
     }
     
     func testGetAccounts() async {
-        let accountType = AccountType.Savings
-        
-        await AccountRequest().getAccounts(accountType, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    if array.count > 0 {
-                        let account = array[0] as Account?
-                        self.testGetAccount(accountId: account!.accountId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+        do {
+            let accountType = AccountType.Savings
+            
+            if let accounts = try await AccountRequest().getAccounts(accountType) {
+                if accounts.count > 0 {
+                    let account = accounts[0]
+                    await self.testGetAccount(accountId: account.accountId)
+                    print(accounts)
+                } else {
+                    print("No accounts found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAccount(accountId: String) {
-        AccountRequest().getAccount(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let account = response as Account? {
-                    print(account)
-                    self.testGetCustomerAccounts(customerId: account.customerId)
+    func testGetAccount(accountId: String) async {
+        do {
+            if let account = try await AccountRequest().getAccount(accountId) {
+                print(account)
+                await self.testGetCustomerAccounts(customerId: account.customerId)
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetCustomerAccounts(customerId: String) async {
+        do {
+            if let accounts = try await AccountRequest().getCustomerAccounts(customerId) {
+                if accounts.count > 0 {
+                    let account = accounts[0]
+                    await self.testPostAccount(customerId: account.customerId)
+                    await self.testPutAccount(accountId: account.accountId, nickname: "New nickname", accountNumber: "0987654321123456")
+                    await self.testDeleteAccount(accountId: account.accountId)
+                    print(accounts)
+                } else {
+                    print("No accounts found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomerAccounts(customerId: String) {
-        AccountRequest().getCustomerAccounts(customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    print(array)
-                    let account = array[0] as Account?
-                    self.testPostAccount(customerId: account!.customerId)
-                    self.testPutAccount(accountId: account!.accountId, nickname: "New nickname", accountNumber: "0987654321123456")
-                    self.testDeleteAccount(accountId: account!.accountId)
-                }
-            }
-        })
-    }
-    
-    func testPostAccount(customerId: String) {
-        let accountType = AccountType.Savings
-        let accountToCreate = Account(accountId: "", accountType:accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: customerId)
-        AccountRequest().postAccount(accountToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
+    func testPostAccount(customerId: String) async {
+        do {
+            let accountType = AccountType.Savings
+            let accountToCreate = Account(accountId: "", accountType:accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: customerId)
+            if let accountPostResponse = try await AccountRequest().postAccount(accountToCreate) {
+                let message = accountPostResponse.message
+                let accountCreated = accountPostResponse.objectCreated
                 print("\(message): \(accountCreated)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutAccount(accountId: String, nickname: String, accountNumber: String?) {
-        AccountRequest().putAccount(accountId, nickname: nickname, accountNumber: accountNumber, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutAccount(accountId: String, nickname: String, accountNumber: String) async {
+        do {
+            if let accountPutResponse = try await AccountRequest().putAccount(accountId, nickname: nickname, accountNumber: accountNumber) {
+                let message = accountPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteAccount(accountId: String) {
-        AccountRequest().deleteAccount(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                if let message = accountResponse?.message {
-                    print(message)
-                }
+    func testDeleteAccount(accountId: String) async {
+        do {
+            if let accountDeleteResponse = try await AccountRequest().deleteAccount(accountId) {
+                let message = accountDeleteResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -478,10 +471,10 @@ class LoanTests {
                                    balance: 100,
                                    accountNumber: "1234567890123456",
                                    customerId: "57d0c20d1fd43e204dd48282")
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testCreateLoan()
+        await testCreateLoan()
     }
     
     func testGetLoans(accountId: String) {
@@ -498,13 +491,10 @@ class LoanTests {
         }
     }
     
-    func testCreateLoan() {
-        AccountRequest().postAccount(account) { (response, error0) in
-            if let error = error0 {
-                print(error)
-            }
-            else {
-                let accountId = response?.object?.accountId ?? ""
+    func testCreateLoan() async {
+        do {
+            if let accountPostResponse = try await AccountRequest().postAccount(account) {
+                let accountId = accountPostResponse.objectCreated?.accountId ?? ""
                 let loan = Loan(loanId: "abcd1234", type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, creationDate: Date(), description: "A home loan for the ages")
                 LoanRequest().postLoan(loan, accountId: accountId, completion: { (loanResponse, error) in
                     if let error = error {
@@ -514,7 +504,7 @@ class LoanTests {
                         let message = loanResponse.message
                         let loanCreated = loanResponse.object
                         print("\(message): \(loanCreated)")
-                        
+
 //                        self.testGetLoans(accountId: accountId)
 //                        self.testGetLoan(loanId: loan.loanId)
 //                        self.testUpdateLoan(loan: loanCreated!)
@@ -522,6 +512,8 @@ class LoanTests {
                     }
                 })
             }
+        } catch {
+            
         }
     }
     

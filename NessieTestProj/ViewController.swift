@@ -14,7 +14,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testAccountsRequests(sender: AnyObject) {
-        let _ = AccountTests()
+        Task { @MainActor in
+            let _ = await AccountTests()
+        }
     }
     
     @IBAction func testAtmRequests(sender: AnyObject) {
@@ -53,6 +55,8 @@ class ViewController: UIViewController {
         let _ = WithdrawalsTests()
     }
     @IBAction func testLoanRequests(sender: UIButton) {
-        let _ = LoanTests()
+        Task { @MainActor in
+            let _ = await LoanTests()
+        }
     }
 }
