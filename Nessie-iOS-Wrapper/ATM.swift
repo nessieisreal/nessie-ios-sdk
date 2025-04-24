@@ -58,81 +58,102 @@ open class ATMRequest {
         
         return "?"
     }
-
-    fileprivate func makeRequest(_ completion:@escaping (_ response:AtmResponse?, _ error: NSError?) -> Void) {
-        let requestString = buildRequestUrl()
-        let nseClient = NSEClient.sharedInstance
-        let request = nseClient.buildRequest(self.requestType!, url: requestString)
-        
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = AtmResponse(data: json)
-                completion(response, nil)
-            }
-        })
-    }
     
-    open func getAtms(_ latitude: Float?, longitude: Float?, radius: String?, completion:@escaping (_ response:AtmResponse?, _ error: NSError?) -> Void) {
+    open func getAtms(_ latitude: Float?, longitude: Float?, radius: String?) async throws -> AtmResponse? {
 
         self.latitude = latitude
         self.longitude = longitude
         self.radius = radius
 
-        self.makeRequest(completion)
+        let nseClient = NSEClient.sharedInstance
+        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let atmResponse = try JSONDecoder().decode(AtmResponse.self, from: data)
+        return atmResponse
     }
     
-    open func getNextAtms(_ nextPage:String, completion:@escaping (_ response:AtmResponse?, _ error: NSError?) -> Void) {
+    open func getNextAtms(_ nextPage: String) async throws -> AtmResponse? {
             
         self.nextPage = nextPage
 
-        self.makeRequest(completion)
+        let nseClient = NSEClient.sharedInstance
+        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let atmResponse = try JSONDecoder().decode(AtmResponse.self, from: data)
+        return atmResponse
     }
 
-    open func getPreviousAtms(_ previousPage:String, completion:@escaping (_ response:AtmResponse?, _ error: NSError?) -> Void) {
+    open func getPreviousAtms(_ previousPage: String) async throws -> AtmResponse? {
 
         self.previousPage = previousPage
         
-        self.makeRequest(completion)
+        let nseClient = NSEClient.sharedInstance
+        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let atmResponse = try JSONDecoder().decode(AtmResponse.self, from: data)
+        return atmResponse
+    }
+    
+    open func getAtm(_ atmId: String) async throws -> Atm? {
+
+        self.atmId = atmId
+        
+        let nseClient = NSEClient.sharedInstance
+        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let atm = try JSONDecoder().decode(Atm.self, from: data)
+        return atm
     }
 
 }
 
-open class AtmResponse {
-    
-    public let previousPage: String
-    public let nextPage: String
-    public let requestArray: Array<AnyObject>
-    
-    internal init(data:JSON) {
-        self.requestArray = data["data"].arrayValue.map({Atm(data: $0)})
-        self.previousPage = data["paging"]["previous"].string ?? ""
-        self.nextPage = data["paging"]["next"].string ?? ""
-    }
+public struct Paging: Decodable {
+    public let previous: String
+    public let next: String
 }
 
-open class Atm {
+open class AtmResponse: Decodable {
+    
+    public let data: [Atm]
+    public let paging: Paging
+
+    public init(data: [Atm], paging: Paging) {
+        self.data = data
+        self.paging = paging
+    }
+
+}
+
+public struct Atm: Decodable {
     
     public let atmId: String
     public let name: String
     public let languageList: Array<String>
     public let address: Address
-    public let geocode: CLLocation
+    public let geocode: Geocode
     public let amountLeft: Int
     public let accessibility: Bool
     public let hours: Array<String>
     
-    internal init(data: JSON) {
-        self.atmId = data["_id"].string ?? ""
-        self.name = data["name"].string ?? ""
-        self.languageList = data["language_list"].arrayValue.map {$0.string!}
-        self.address = Address(data:data["address"])
-        self.amountLeft = data["amount_left"].int ?? 0
-        self.accessibility = data["accessibility"].bool ?? false
-        self.hours = data["hours"].arrayValue.map {$0.string!}
-        self.geocode = CLLocation(latitude: data["lat"].double ?? 0, longitude: data["lng"].double ?? 0)
+    public init(atmId: String, name: String, languageList: Array<String>, address: Address, geocode: Geocode, amountLeft: Int, accessibility: Bool, hours: Array<String>) {
+        self.atmId = atmId
+        self.name = name
+        self.languageList = languageList
+        self.address = address
+        self.geocode = geocode
+        self.amountLeft = amountLeft
+        self.accessibility = accessibility
+        self.hours = hours
+    }
+
+    
+    enum CodingKeys: String, CodingKey {
+        case name, address, accessibility, hours
+
+        case atmId = "_id"
+        case languageList = "language_list"
+        case amountLeft = "amount_left"
+        case geocode = "geocode"
     }
 
 }

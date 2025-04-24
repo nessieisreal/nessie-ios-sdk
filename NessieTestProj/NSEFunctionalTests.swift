@@ -105,51 +105,70 @@ class AccountTests {
 class ATMTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        self.testGetAtms()
+        await self.testGetAtms()
     }
     
-    func testGetAtms() {
-        let latitude = 38.9283 as Float
-        let longitude = -77.1753 as Float
-        let radius = "1" as String
-        
-        ATMRequest().getAtms(latitude, longitude: longitude, radius: radius, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
-                
-                self.testGetNextAtms(nextString: array!.nextPage)
+    func testGetAtms() async {
+        do {
+            let latitude = 38.9283 as Float
+            let longitude = -77.1753 as Float
+            let radius = "1" as String
+            
+            if let atmResponse = try await ATMRequest().getAtms(latitude, longitude: longitude, radius: radius) {
+                if atmResponse.data.count > 0 {
+                    let atm = atmResponse.data[0]
+                    await self.testGetAtm(atmId: atm.atmId)
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
+                await self.testGetNextAtms(nextString: atmResponse.paging.next)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetNextAtms(nextString: String) {
-        ATMRequest().getNextAtms(nextString, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
-                
-                self.testGetPreviousAtms(previousString: array!.previousPage)
+    func testGetNextAtms(nextString: String) async {
+        do {
+            if let atmResponse = try await ATMRequest().getNextAtms(nextString) {
+                if atmResponse.data.count > 0 {
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
+                await self.testGetPreviousAtms(previousString: atmResponse.paging.previous)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetPreviousAtms(previousString: String) {
-        ATMRequest().getPreviousAtms(previousString, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
+    func testGetPreviousAtms(previousString: String) async {
+        do {
+            if let atmResponse = try await ATMRequest().getPreviousAtms(previousString) {
+                if atmResponse.data.count > 0 {
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAtm(atmId: String) async {
+        do {
+            if let atm = try await ATMRequest().getAtm(atmId) {
+                print(atm)
+            }
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
 }

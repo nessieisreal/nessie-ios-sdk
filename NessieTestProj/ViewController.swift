@@ -20,7 +20,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testAtmRequests(sender: AnyObject) {
-        let _ = ATMTests()
+        Task { @MainActor in
+            let _ = await ATMTests()
+        }
     }
     
     @IBAction func testBillRequests(sender: AnyObject) {

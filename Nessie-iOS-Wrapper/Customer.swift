@@ -25,7 +25,7 @@ open class Customer: JsonParser {
     public required init(data: JSON) {
         self.firstName = data["first_name"].string ?? ""
         self.lastName = data["last_name"].string ?? ""
-        self.address = Address(data: data["address"])
+        self.address = Address(streetName: "", streetNumber: "", city: "", state: "", zipCode: "") //Address(data: data["address"])
         self.customerId = data["_id"].string ?? ""
     }
 }

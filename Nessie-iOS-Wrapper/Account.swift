@@ -16,7 +16,16 @@ public enum AccountType: String, Decodable, Encodable {
     case Unknown = ""
 }
 
-public struct Account: Decodable {
+public struct Account: Decodable, JsonParser {
+    public init(data: SwiftyJSON.JSON) {
+        self.accountId = ""
+        self.accountType = .Checking
+        self.nickname = ""
+        self.rewards = 1
+        self.balance = 1
+        self.accountNumber = ""
+        self.customerId = ""
+    }
     
     public var accountId: String
     public var accountType: AccountType
@@ -25,6 +34,16 @@ public struct Account: Decodable {
     public var balance: Int
     public var accountNumber: String
     public var customerId: String
+    
+    public init(accountId: String, accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String, customerId: String) {
+        self.accountId = accountId
+        self.accountType = accountType
+        self.nickname = nickname
+        self.rewards = rewards
+        self.balance = balance
+        self.accountNumber = accountNumber
+        self.customerId = customerId
+    }
     
     enum CodingKeys: String, CodingKey {
         case nickname, rewards, balance

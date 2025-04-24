@@ -29,8 +29,8 @@ open class Merchant: JsonParser {
         self.merchantId = data["_id"].string ?? ""
         self.name = data["name"].string ?? ""
         self.category = data["category"].arrayValue.map({$0.string ?? ""})
-        self.address = Address(data: data["address"])
-        self.geocode = Geocode(data: data["geocode"])
+        self.address = Address(streetName: "", streetNumber: "", city: "", state: "", zipCode: "") //Address(data: data["address"])
+        self.geocode = Geocode(lng: 1, lat: 1) //Geocode(data: data["geocode"])
     }
 }
 

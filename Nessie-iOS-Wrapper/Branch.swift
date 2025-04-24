@@ -24,8 +24,8 @@ open class Branch: JsonParser {
         self.phoneNumber = data["phone_number"].string ?? ""
         self.hours = data["hours"].arrayValue.map({$0.string ?? ""})
         self.notes = data["notes"].arrayValue.map({$0.string ?? ""})
-        self.address = Address(data: data["address"])
-        self.geocode = Geocode(data: data["geocode"])
+        self.address = Address(streetName: "", streetNumber: "", city: "", state: "", zipCode: "") //Address(data: data["address"])
+        self.geocode = Geocode(lng: 1, lat: 1) //Geocode(data: data["geocode"])
     }
 }
 

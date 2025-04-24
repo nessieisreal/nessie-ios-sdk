@@ -131,7 +131,7 @@ open class BaseClass: Initable {
     public let requestArray: Array<AnyObject>
     
     required public init(data:JSON) {
-        self.requestArray = data["data"].arrayValue.map({Atm(data:$0)})
+        self.requestArray = [] //data["data"].arrayValue.map({Atm(data:$0)})
         self.previuosPage = data["paging"]["previous"].string ?? ""
         self.nextPage = data["paging"]["next"].string ?? ""
     }

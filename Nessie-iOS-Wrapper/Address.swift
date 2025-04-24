@@ -9,35 +9,22 @@
 import Foundation
 import SwiftyJSON
 
-open class Geocode {
-    let lng: NSNumber
-    let lat: NSNumber
+public struct Geocode: Decodable {
+    let lng: Float
+    let lat: Float
 
-    internal init(data: JSON) {
-        lng = data["lng"].number ?? 0
-        lat = data["lat"].number ?? 0
-    }
-
-    public init(lng: NSNumber, lat: NSNumber) {
+    public init(lng: Float, lat: Float) {
         self.lng = lng
         self.lat = lat
     }
 }
 
-open class Address {
+public struct Address: Decodable {
     public let streetNumber:String
     public let streetName:String
     public let city:String
     public let state:String
     public let zipCode:String
-    
-    internal init(data: JSON) {
-        streetName = data["street_name"].string ?? ""
-        streetNumber = data["street_number"].string ?? ""
-        city = data["city"].string ?? ""
-        state = data["state"].string ?? ""
-        zipCode = data["zip"].string ?? ""
-    }
     
     public init(streetName:String, streetNumber:String, city:String, state:String, zipCode:String) {
         self.streetName = streetName
@@ -45,6 +32,14 @@ open class Address {
         self.city = city
         self.state = state
         self.zipCode = zipCode
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case city, state
+
+        case streetName = "street_name"
+        case streetNumber = "street_number"
+        case zipCode = "zip"
     }
     
     internal func toDict() -> Dictionary<String,AnyObject> {
