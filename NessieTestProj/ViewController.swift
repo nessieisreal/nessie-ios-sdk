@@ -32,7 +32,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testBranchesRequests(sender: AnyObject) {
-        let _ = BranchTests()
+        Task { @MainActor in
+            let _ = await BranchTests()
+        }
     }
     
     @IBAction func testCustomersRequests(sender: AnyObject) {

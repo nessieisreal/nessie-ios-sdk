@@ -177,12 +177,9 @@ class BillTests {
     let client = NSEClient.sharedInstance
     
     var accountToAccess: Account = Account(accountId: "", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
-//    var accountToPay: Account = Account(accountId: "", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
-    
     var accountToAccessId: String
     
     let dateFormatter = DateFormatter()
-//    var accountToPayId: String
     
     init() async throws {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
@@ -191,13 +188,10 @@ class BillTests {
         
         let accountToAccessResponse = try await AccountRequest().postAccount(accountToAccess)
         accountToAccessId = accountToAccessResponse?.objectCreated?.accountId ?? ""
-//        let accountToPayResponse = try await AccountRequest().postAccount(accountToPay)
-//        accountToPayId = accountToPayResponse?.objectCreated?.accountId ?? ""
         let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", paymentDate: nil, recurringDate: 1, upcomingPaymentDate: dateFormatter.string(from: Date()), paymentAmount: 123, accountId: accountToAccessId)
-        let bill = try await BillRequest().postBill(billToCreate)
+        _ = try await BillRequest().postBill(billToCreate)
         await testGetAllBills()
-        let accountToAccessDeleteResponse = try await AccountRequest().deleteAccount(accountToAccess.accountId)
-//        let accountToPayDeleteResponse = try await AccountRequest().deleteAccount(accountToPay.accountId)
+        _ = try await AccountRequest().deleteAccount(accountToAccess.accountId)
     }
     
     func testGetAllBills() async {
@@ -284,39 +278,35 @@ class BillTests {
 class BranchTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetBranches()
+        await self.testGetBranches()
     }
     
-    func testGetBranches() {
-        BranchRequest().getBranches({(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Branch>? {
-                    if array.count > 0 {
-                        let branch = array[0] as Branch?
-                        self.testGetBranch(branchId: branch!.branchId)
-                        print(array)
-                    } else {
-                        print("No branches found")
-                    }
+    func testGetBranches() async {
+        do {
+            if let branches = try await BranchRequest().getBranches() {
+                if branches.count > 0 {
+                    let branch = branches[0]
+                    print(branches)
+                    await self.testGetBranch(branchId: branch.branchId)
+                } else {
+                    print("No branches found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetBranch(branchId: String) {
-        BranchRequest().getBranch(branchId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let branch = response as Branch? {
-                    print(branch)
-                }
+    func testGetBranch(branchId: String) async {
+        do {
+            if let branch = try await BranchRequest().getBranch(branchId) {
+                print(branch)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -954,90 +944,72 @@ class WithdrawalsTests {
 
 class EnterpriseAccountTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseAccountRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetAccounts()
+        await self.testGetAccounts()
     }
     
-    func testGetAccounts() {
-        let request = EnterpriseAccountRequest()
-        request.getAccounts(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    if array.count > 0 {
-                        let account = array[0] as Account?
-                        self.testGetAccount(accountId: account!.accountId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetAccounts() async {
+        do {
+            if let enterpriseAccountResponse = try await request.getAccounts() {
+                if enterpriseAccountResponse.results.count > 0 {
+                    let account = enterpriseAccountResponse.results[0]
+                    await self.testGetAccount(accountId: account.accountId)
+                    print(enterpriseAccountResponse.results)
+                } else {
+                    print("No accounts found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetAccount(accountId: String) {
-        var request = EnterpriseAccountRequest()
-        request.getAccount(accountId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Account? {
-                        print(account)
-                    }
-                }
+    func testGetAccount(accountId: String) async {
+        do {
+            if let account = try await request.getAccount(accountId) {
+                print(account)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseBillTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseBillRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetBills()
+        await self.testGetBills()
     }
     
-    func testGetBills() {
-        let request = EnterpriseBillRequest()
-        request.getBills(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        let bill = array[0] as Bill?
-                        self.testGetBill(billId: bill!.billId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetBills() async {
+        do {
+            if let enterpriseBillResponse = try await request.getBills() {
+                if enterpriseBillResponse.results.count > 0 {
+                    let bill = enterpriseBillResponse.results[0]
+                    await self.testGetBill(billId: bill.billId)
+                    print(enterpriseBillResponse.results)
+                } else {
+                    print("No bills found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetBill(billId: String) {
-        var request = EnterpriseBillRequest()
-        request.getBill(billId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Bill? {
-                        print(account)
-                    }
-                }
+    func testGetBill(billId: String) async {
+        do {
+            if let bill = try await request.getBill(billId) {
+                print(bill)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }

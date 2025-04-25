@@ -26,45 +26,37 @@ extension Enterprise {
     }
 }
 
+public struct EnterpriseAccountResponse: Decodable {
+    public var results: [Account]
+}
+
 public struct EnterpriseAccountRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "accounts"
     
     public init () {}
     
-    public func getAccounts(_ completion:@escaping (_ accountsArray: Array<Account>?, _ error: NSError?) -> Void) {
+    public func getAccounts() async throws -> EnterpriseAccountResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseAccountResponse = try JSONDecoder().decode(EnterpriseAccountResponse.self, from: data)
+        return enterpriseAccountResponse
     }
     
-    public mutating func getAccount(_ accountId: String, completion: @escaping (_ customer: Account?, _ error: NSError?) -> Void) {
+    public mutating func getAccount(_ accountId: String) async throws -> Account? {
         self.id = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let account = try JSONDecoder().decode(Account.self, from: data)
+        return account
     }
+}
+
+public struct EnterpriseBillResponse: Decodable {
+    public var results: [Bill]
 }
 
 public struct EnterpriseBillRequest: Enterprise {
@@ -73,38 +65,22 @@ public struct EnterpriseBillRequest: Enterprise {
     
     public init () {}
     
-    public func getBills(_ completion:@escaping (_ billsArray: Array<Bill>?, _ error: NSError?) -> Void) {
+    public func getBills() async throws -> EnterpriseBillResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseBillResponse = try JSONDecoder().decode(EnterpriseBillResponse.self, from: data)
+        return enterpriseBillResponse
     }
     
-    public mutating func getBill(_ bilId: String, completion: @escaping (_ customer: Bill?, _ error: NSError?) -> Void) {
+    public mutating func getBill(_ bilId: String) async throws -> Bill? {
         self.id = bilId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let bill = try JSONDecoder().decode(Bill.self, from: data)
+        return bill
     }
 }
 

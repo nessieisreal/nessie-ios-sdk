@@ -16,16 +16,7 @@ public enum AccountType: String, Decodable, Encodable {
     case Unknown = ""
 }
 
-public struct Account: Decodable, JsonParser {
-    public init(data: SwiftyJSON.JSON) {
-        self.accountId = ""
-        self.accountType = .Checking
-        self.nickname = ""
-        self.rewards = 1
-        self.balance = 1
-        self.accountNumber = ""
-        self.customerId = ""
-    }
+public struct Account: Decodable {
     
     public var accountId: String
     public var accountType: AccountType

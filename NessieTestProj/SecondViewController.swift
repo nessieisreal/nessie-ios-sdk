@@ -14,11 +14,15 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseAccountsRequests(sender: AnyObject) {
-        let _ = EnterpriseAccountTests()
+        Task { @MainActor in
+            let _ = await EnterpriseAccountTests()
+        }
     }
     
     @IBAction func testEnterpriseBillsRequests(sender: AnyObject) {
-        let _ = EnterpriseBillTests()
+        Task { @MainActor in
+            let _ = await EnterpriseBillTests()
+        }
     }
     
     @IBAction func testEnterpriseCustomerRequests(sender: AnyObject) {
