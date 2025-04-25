@@ -176,102 +176,108 @@ class ATMTests {
 class BillTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    var accountToAccess: Account = Account(accountId: "", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+//    var accountToPay: Account = Account(accountId: "", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    
+    var accountToAccessId: String
+    
+    let dateFormatter = DateFormatter()
+//    var accountToPayId: String
+    
+    init() async throws {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllBills()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        let accountToAccessResponse = try await AccountRequest().postAccount(accountToAccess)
+        accountToAccessId = accountToAccessResponse?.objectCreated?.accountId ?? ""
+//        let accountToPayResponse = try await AccountRequest().postAccount(accountToPay)
+//        accountToPayId = accountToPayResponse?.objectCreated?.accountId ?? ""
+        let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", paymentDate: nil, recurringDate: 1, upcomingPaymentDate: dateFormatter.string(from: Date()), paymentAmount: 123, accountId: accountToAccessId)
+        let bill = try await BillRequest().postBill(billToCreate)
+        await testGetAllBills()
+        let accountToAccessDeleteResponse = try await AccountRequest().deleteAccount(accountToAccess.accountId)
+//        let accountToPayDeleteResponse = try await AccountRequest().deleteAccount(accountToPay.accountId)
     }
     
-    var accountToAccess: Account = Account(accountId: "57d213d71fd43e204dd4841e", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
-    var accountToPay: Account = Account(accountId: "123", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "")
-    
-    func testGetAllBills() {
-        BillRequest().getAccountBills(accountToAccess.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        let bill = array[0]
-                        print(array)
-                        self.testGetBill(billId: bill.billId)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetAllBills() async {
+        do {
+            if let bills = try await BillRequest().getAccountBills(accountToAccessId) {
+                if bills.count > 0 {
+                    let bill = bills[0]
+                    print(bills)
+                    await self.testGetBill(billId: bill.billId)
+                } else {
+                    print("No bills found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetBill(billId: String) {
-        BillRequest().getBill(billId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let bill = response as Bill? {
-                    print(bill)
-                    self.testGetCustomerBills()
+    func testGetBill(billId: String) async {
+        do {
+            if let bill = try await BillRequest().getBill(billId) {
+                print(bill)
+                await self.testGetCustomerBills()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetCustomerBills() async {
+        do {
+            if let customerBills = try await BillRequest().getCustomerBills(accountToAccess.customerId) {
+                if customerBills.count > 0 {
+                    print(customerBills)
+                    await self.testPostBill()
+                } else {
+                    print("No bills found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomerBills() {
-        BillRequest().getCustomerBills(accountToAccess.customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        print(array)
-                        self.testPostBill()
-                    } else {
-                        print("No accounts found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostBill() {
-        let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", creationDate: Date(), paymentDate: nil, recurringDate: 1, upcomingPaymentDate: Date(), paymentAmount: 123, accountId: accountToAccess.accountId)
-        BillRequest().postBill(billToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
-                let billCreated = billResponse?.object
+    func testPostBill() async {
+        do {
+            let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", paymentDate: dateFormatter.string(from: Date()), recurringDate: 1, upcomingPaymentDate: dateFormatter.string(from: Date()), paymentAmount: 123, accountId: accountToAccessId)
+            if let billPostResponse = try await BillRequest().postBill(billToCreate) {
+                let message = billPostResponse.message
+                let billCreated = billPostResponse.objectCreated
                 print("\(message): \(billCreated)")
-                self.testPutBill(bill: billCreated!)
+                await self.testPutBill(billId: billCreated!.billId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutBill(bill: Bill) {
-        bill.payee = "Raul"
-        BillRequest().putBill(bill, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
+    func testPutBill(billId: String) async {
+        do {
+            let billToUpdate = BillPutData(status: BillStatus.Pending, payee: "Raul", nickname: "AwesomeName", recurringDate: 2, paymentAmount: 321)
+            if let billPutResponse = try await BillRequest().putBill(billId, billToUpdate) {
+                let message = billPutResponse.message
                 print("\(message)")
-                self.testDeleteBill(billId: bill.billId)
+                await self.testDeleteBill(billId: billId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteBill(billId: String) {
-        BillRequest().deleteBill(billId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
+    func testDeleteBill(billId: String) async {
+        do {
+            if let billDeleteResponse = try await BillRequest().deleteBill(billId) {
+                let message = billDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 

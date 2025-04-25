@@ -26,7 +26,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testBillRequests(sender: AnyObject) {
-        let _ = BillTests()
+        Task { @MainActor in
+            let _ = try await BillTests()
+        }
     }
     
     @IBAction func testBranchesRequests(sender: AnyObject) {

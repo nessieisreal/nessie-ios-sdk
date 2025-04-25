@@ -32,10 +32,10 @@ public struct Account: Decodable, JsonParser {
     public var nickname: String
     public var rewards: Int
     public var balance: Int
-    public var accountNumber: String
+    public var accountNumber: String?
     public var customerId: String
     
-    public init(accountId: String, accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String, customerId: String) {
+    public init(accountId: String, accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String?, customerId: String) {
         self.accountId = accountId
         self.accountType = accountType
         self.nickname = nickname
@@ -60,7 +60,7 @@ public struct AccountPostData: Codable {
     public var nickname: String
     public var rewards: Int
     public var balance: Int
-    public var accountNumber: String
+    public var accountNumber: String?
     
     enum CodingKeys: String, CodingKey {
         case nickname, rewards, balance
@@ -70,15 +70,15 @@ public struct AccountPostData: Codable {
 }
 
 public struct AccountPostResponse: Decodable {
-    public var code: Int
-    public var message: String
+    public var code: Int?
+    public var message: String?
     public var culprit: [String]?
     public var objectCreated: Account?
 }
 
 public struct AccountPutData: Codable {
     public var nickname: String
-    public var accountNumber: String
+    public var accountNumber: String?
     
     enum CodingKeys: String, CodingKey {
         case nickname
@@ -87,14 +87,14 @@ public struct AccountPutData: Codable {
 }
 
 public struct AccountPutResponse: Decodable {
-    public var code: Int
-    public var message: String
+    public var code: Int?
+    public var message: String?
     public var culprit: [String]?
 }
 
 public struct AccountDeleteResponse: Decodable {
-    public var code: Int
-    public var message: String
+    public var code: Int?
+    public var message: String?
 }
 
 open class AccountRequest {
@@ -172,7 +172,11 @@ open class AccountRequest {
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        var accountPostData = AccountPostData(accountType: newAccount.accountType, nickname: newAccount.nickname, rewards: newAccount.rewards, balance: newAccount.balance, accountNumber: newAccount.accountNumber)
+        var accountPostData = AccountPostData(accountType: newAccount.accountType, nickname: newAccount.nickname, rewards: newAccount.rewards, balance: newAccount.balance)
+        
+        if let accountNumber = newAccount.accountNumber {
+            accountPostData.accountNumber = accountNumber
+        }
         
         do {
             request.httpBody = try JSONEncoder().encode(accountPostData)
@@ -185,13 +189,17 @@ open class AccountRequest {
         return accountPostResponse
     }
 
-    open func putAccount(_ accountId: String, nickname: String, accountNumber: String) async throws -> AccountPutResponse? {
+    open func putAccount(_ accountId: String, nickname: String, accountNumber: String?) async throws -> AccountPutResponse? {
         self.requestType = HTTPType.PUT
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        var accountPutData = AccountPutData(nickname: nickname, accountNumber: accountNumber)
+        var accountPutData = AccountPutData(nickname: nickname)
+        
+        if let accountNumber = accountNumber {
+            accountPutData.accountNumber = accountNumber
+        }
         
         do {
             request.httpBody = try JSONEncoder().encode(accountPutData)
