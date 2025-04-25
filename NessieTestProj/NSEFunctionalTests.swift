@@ -313,83 +313,75 @@ class BranchTests {
 class CustomerTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        testGetCustomers()
+        await testGetCustomers()
     }
     
-    func testGetCustomers() {
-        CustomerRequest().getCustomers({(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Customer>? {
-                    if array.count > 0 {
-                        let customer = array[0] as Customer?
-                        self.testGetCustomer(customerId: customer!.customerId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetCustomers() async {
+        do {
+            if let customers = try await CustomerRequest().getCustomers() {
+                if customers.count > 0 {
+                    let customer = customers[0]
+                    print(customers)
+                    await self.testGetCustomer(customerId: customer.customerId)
+                } else {
+                    print("No customers found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomer(customerId: String) {
-        CustomerRequest().getCustomer(customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let customer = response as Customer? {
-                    print(customer)
-                    self.testGetCustomers(from: "57d20f881fd43e204dd48418")
-                }
+    func testGetCustomer(customerId: String) async {
+        do {
+            if let customer = try await CustomerRequest().getCustomer(customerId) {
+                print(customer)
+                await self.testGetCustomer(accountId: "5cf88f206759394351beee6b")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomers(from accountId: String) {
-        CustomerRequest().getCustomer(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let customer = response as Customer? {
-                    print(customer)
-                    self.testPostCustomer()
-                }
+    func testGetCustomer(accountId: String) async  {
+        do {
+            if let customer = try await CustomerRequest().getCustomerFromAccountId(accountId) {
+                print(customer)
+                await self.testPostCustomer()
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostCustomer() {
-        let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
-        let customerToCreate = Customer(firstName: "Victor", lastName: "Lopez", address: address, customerId: "asd")
-        CustomerRequest().postCustomer(customerToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let customerResponse = response as BaseResponse<Customer>?
-                let message = customerResponse?.message
-                let customerCreated = customerResponse?.object
+    func testPostCustomer() async {
+        do {
+            let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
+            let customerToCreate = Customer(firstName: "Victor", lastName: "Lopez", address: address, customerId: "123")
+            if let customerPostResponse = try await CustomerRequest().postCustomer(customerToCreate) {
+                let message = customerPostResponse.message
+                let customerCreated = customerPostResponse.objectCreated
                 print("\(message): \(customerCreated)")
-                self.testPutCustomer(customerToBeModified: customerCreated!)
+                await self.testPutCustomer(customerId: customerCreated!.customerId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutCustomer(customerToBeModified: Customer) {
-        customerToBeModified.firstName = "Raul"
-        CustomerRequest().putCustomer(customerToBeModified, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Customer>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutCustomer(customerId: String) async {
+        do {
+            let address = Address(streetName: "Street", streetNumber: "2", city: "City", state: "MD", zipCode: "54321")
+            let customerToUpdate = CustomerPutData(address: address)
+            if let customerPutResponse = try await CustomerRequest().putCustomer(customerId, customerToUpdate) {
+                let message = customerPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -1016,45 +1008,36 @@ class EnterpriseBillTests {
 
 class EnterpriseCustomerTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseCustomerRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetCustomers()
+        await self.testGetCustomers()
     }
     
-    func testGetCustomers() {
-        let request = EnterpriseCustomerRequest()
-        request.getCustomers(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Customer>? {
-                    if array.count > 0 {
-                        let customer = array[0] as Customer?
-                        self.testGetCustomer(customerId: customer!.customerId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetCustomers() async {
+        do {
+            if let enterpriseCustomerResponse = try await request.getCustomers() {
+                if enterpriseCustomerResponse.results.count > 0 {
+                    let customer = enterpriseCustomerResponse.results[0]
+                    await self.testGetCustomer(customerId: customer.customerId)
+                    print(enterpriseCustomerResponse.results)
+                } else {
+                    print("No customers found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetCustomer(customerId: String) {
-        var request = EnterpriseCustomerRequest()
-        request.getCustomer(customerId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Customer? {
-                        print(account)
-                    }
-                }
+    func testGetCustomer(customerId: String) async {
+        do {
+            if let customer = try await request.getCustomer(customerId) {
+                print(customer)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }

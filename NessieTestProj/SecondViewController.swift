@@ -26,7 +26,9 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseCustomerRequests(sender: AnyObject) {
-        let _ = EnterpriseCustomerTests()
+        Task { @MainActor in
+            let _ = await EnterpriseCustomerTests()
+        }
     }
     
     @IBAction func testEnterpriseDepositsRequests(sender: AnyObject) {

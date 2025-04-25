@@ -38,7 +38,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testCustomersRequests(sender: AnyObject) {
-        let _ = CustomerTests()
+        Task { @MainActor in
+            let _ = await CustomerTests()
+        }
     }
 
     @IBAction func testDepositsRequests(sender: AnyObject) {

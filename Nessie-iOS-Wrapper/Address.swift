@@ -9,7 +9,7 @@
 import Foundation
 import SwiftyJSON
 
-public struct Geocode: Decodable {
+public struct Geocode: Codable {
     let lng: Float
     let lat: Float
 
@@ -19,7 +19,7 @@ public struct Geocode: Decodable {
     }
 }
 
-public struct Address: Decodable {
+public struct Address: Codable {
     public let streetNumber:String
     public let streetName:String
     public let city:String

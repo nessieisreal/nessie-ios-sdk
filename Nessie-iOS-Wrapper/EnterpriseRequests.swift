@@ -84,44 +84,32 @@ public struct EnterpriseBillRequest: Enterprise {
     }
 }
 
+public struct EnterpriseCustomerResponse: Decodable {
+    public var results: [Customer]
+}
+
 public struct EnterpriseCustomerRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "customers"
     
     public init () {}
     
-    public func getCustomers(_ completion:@escaping (_ customersArray: Array<Customer>?, _ error: NSError?) -> Void) {
+    public func getCustomers() async throws -> EnterpriseCustomerResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseCustomerRequest = try JSONDecoder().decode(EnterpriseCustomerResponse.self, from: data)
+        return enterpriseCustomerRequest
     }
     
-    public mutating func getCustomer(_ bilId: String, completion: @escaping (_ customer: Customer?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getCustomer(_ customerId: String) async throws -> Customer? {
+        self.id = customerId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let customer = try JSONDecoder().decode(Customer.self, from: data)
+        return customer
     }
 }
 

@@ -96,7 +96,7 @@ public struct BillPostResponse: Decodable {
     public var objectCreated: Bill?
 }
 
-public struct BillPutData: Codable {
+public struct BillPutData: Encodable {
     public var status: BillStatus?
     public var payee: String?
     public var nickname: String?
