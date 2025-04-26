@@ -9,29 +9,38 @@
 import Foundation
 import SwiftyJSON
 
-public enum TransactionMedium : String {
+public enum TransactionMedium : String, Codable {
     case Balance = "balance"
     case Rewards = "rewards"
     case Unknown
 }
 
-public enum TransactionType : String {
-    case Payee = "payee"
-    case Payer = "payer"
+public enum TransactionType : String, Decodable {
+    case P2P = "p2p"
+    case Deposit = "deposit"
+    case Withdrawal = "withdrawal"
     case Unknown
 }
 
-open class Deposit: JsonParser {
+public enum TransactionStatus : String, Codable {
+    case Pending = "pending"
+    case Cancelled = "cancelled"
+    case Completed = "completed"
+    case Executed = "executed"
+    case Unknown
+}
+
+public struct Deposit: Decodable, JsonParser {
     public var depositId: String
-    public var status: BillStatus
+    public var status: TransactionStatus
     public var medium: TransactionMedium
     public var payeeId: String?
     public var amount: Int
-    public var type: String
-    public var transactionDate: Date?
+    public var type: TransactionType
+    public var transactionDate: String?
     public var description: String?
     
-    public init(depositId: String, status: BillStatus, medium: TransactionMedium, payeeId: String?, amount: Int, type: String, transactionDate: Date?, description: String?) {
+    public init(depositId: String, status: TransactionStatus, medium: TransactionMedium, payeeId: String?, amount: Int, type: TransactionType, transactionDate: String?, description: String?) {
         self.depositId = depositId
         self.status = status
         self.medium = medium
@@ -42,17 +51,76 @@ open class Deposit: JsonParser {
         self.description = description
     }
     
-    public required init(data: JSON) {
+    public init(data: JSON) {
         self.depositId = data["_id"].string ?? ""
-        self.status = BillStatus(rawValue: data["status"].string ?? "") ?? .Unknown
+        self.status = TransactionStatus(rawValue: data["status"].string ?? "") ?? .Unknown
         self.medium = TransactionMedium(rawValue: data["medium"].string ?? "") ?? .Unknown
         self.payeeId = data["payee_id"].string ?? ""
         self.amount = data["amount"].int ?? 0
-        self.type = data["type"].string ?? ""
-        self.transactionDate = data["transaction_date"].string?.stringToDate()
+        self.type = TransactionType(rawValue: data["type"].string ?? "") ?? .Unknown
+        self.transactionDate = data["transaction_date"].string ?? ""
         self.description = data["description"].string ?? ""
-        self.depositId = data["_id"].string ?? ""
     }
+    
+    enum CodingKeys: String, CodingKey {
+        case status, medium, amount, type, description
+
+        case depositId = "_id"
+        case payeeId = "payee_id"
+        case transactionDate = "transaction_date"
+    }
+}
+
+public struct DepositPostData: Encodable {
+    public var medium: TransactionMedium
+    public var transactionDate: String?
+    public var status: TransactionStatus?
+    public var amount: Int
+    public var description: String?
+    
+    public init(medium: TransactionMedium, transactionDate: String? = nil, status: TransactionStatus? = nil, amount: Int, description: String? = nil) {
+        self.medium = medium
+        self.transactionDate = transactionDate
+        self.status = status
+        self.amount = amount
+        self.description = description
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case medium, status, amount, description
+
+        case transactionDate = "transaction_date"
+    }
+}
+
+public struct DepositPostResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+    public var objectCreated: Deposit?
+}
+
+public struct DepositPutData: Encodable {
+    public var medium: TransactionMedium
+    public var amount: Int
+    public var description: String?
+    
+    public init(medium: TransactionMedium, amount: Int, description: String? = nil) {
+        self.medium = medium
+        self.amount = amount
+        self.description = description
+    }
+}
+
+public struct DepositPutResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+}
+
+public struct DepositDeleteResponse: Decodable {
+    public var code: Int?
+    public var message: String?
 }
 
 open class DepositRequest {
@@ -79,121 +147,82 @@ open class DepositRequest {
     }
     
     // APIs
-    open func getDeposit(_ depositId: String, completion: @escaping (_ deposit: Deposit?, _ error: NSError?) -> Void) {
+    open func getDeposit(_ depositId: String) async throws -> Deposit? {
         requestType = HTTPType.GET
         self.depositId = depositId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let deposit = try JSONDecoder().decode(Deposit.self, from: data)
+        return deposit
     }
     
-    open func getDepositsFromAccountId(_ accountId: String, completion: @escaping (_ depositArrays: Array<Deposit>?, _ error: NSError?) -> Void) {
+    open func getDepositsFromAccountId(_ accountId: String) async throws -> [Deposit]? {
         requestType = HTTPType.GET
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let deposits = try JSONDecoder().decode([Deposit].self, from: data)
+        return deposits
     }
     
-    open func postDeposit(_ newDeposit: Deposit, accountId: String, completion: @escaping (_ depositResponse: BaseResponse<Deposit>?, _ error: NSError?) -> Void) {
+    open func postDeposit(_ accountId: String, _ newDeposit: DepositPostData) async throws -> DepositPostResponse? {
         requestType = HTTPType.POST
         self.accountId = accountId
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-                
-        var params: Dictionary<String, AnyObject> = ["medium": newDeposit.medium.rawValue as AnyObject,
-                                                     "amount": newDeposit.amount as AnyObject]
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-dd-MM"
-        if let transactionDate = newDeposit.transactionDate as Date? {
-            let dateString = dateFormatter.string(from: transactionDate)
-            params["transaction_date"] = dateString as AnyObject?
-        }
-        
-        if let description = newDeposit.description {
-            params["description"] = description as AnyObject?
-        }
+        if let transactionDate = newDeposit.transactionDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
 
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
-        } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            guard dateFormatter.date(from: transactionDate) != nil else {
+                throw DateFormattingError.notADate
+            }
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response, nil)
-            }
-        })
+        do {
+            request.httpBody = try JSONEncoder().encode(newDeposit)
+        } catch let error as NSError {
+            throw error
+        }
+        
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let depositPostResponse = try JSONDecoder().decode(DepositPostResponse.self, from: data)
+        return depositPostResponse
     }
     
-    open func putDeposit(_ updatedDeposit: Deposit, completion: @escaping (_ depositResponse: BaseResponse<Deposit>?, _ error: NSError?) -> Void) {
+    open func putDeposit(_ depositId: String, _ updatedDeposit: DepositPutData) async throws -> DepositPutResponse? {
         requestType = HTTPType.PUT
-        depositId = updatedDeposit.depositId
+        self.depositId = depositId
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
-        var params: Dictionary<String, AnyObject> = ["medium": updatedDeposit.medium.rawValue as AnyObject,
-                                                     "amount": updatedDeposit.amount as AnyObject]
-        if let description = updatedDeposit.description {
-            params["description"] = description as AnyObject?
-        }
-        
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(updatedDeposit)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let depositPutResponse = try JSONDecoder().decode(DepositPutResponse.self, from: data)
+        return depositPutResponse
     }
     
-    open func deleteDeposit(_ depositId: String, completion: @escaping (_ depositResponse: BaseResponse<Deposit>?, _ error: NSError?) -> Void) {
+    open func deleteDeposit(_ depositId: String) async throws -> DepositDeleteResponse? {
         requestType = HTTPType.DELETE
         self.depositId = depositId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let response = BaseResponse<Deposit>(requestArray: nil, object: nil, message: "Deposit deleted")
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        guard !data.isEmpty else {
+            return DepositDeleteResponse(code: 204, message: "Deposit Deleted")
+        }
+        let depositDeleteResponse = try JSONDecoder().decode(DepositDeleteResponse.self, from: data)
+        return depositDeleteResponse
     }
 }

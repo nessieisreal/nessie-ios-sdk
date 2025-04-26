@@ -9,7 +9,7 @@
 import Foundation
 import SwiftyJSON
 
-public enum BillStatus : String, Decodable, Encodable {
+public enum BillStatus : String, Codable {
     case Pending = "pending"
     case Recurring = "recurring"
     case Cancelled = "cancelled"

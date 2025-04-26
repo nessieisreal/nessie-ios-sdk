@@ -113,44 +113,32 @@ public struct EnterpriseCustomerRequest: Enterprise {
     }
 }
 
+public struct EnterpriseDepositResponse: Decodable {
+    public var results: [Deposit]
+}
+
 public struct EnterpriseDepositRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "deposits"
     
     public init () {}
     
-    public func getDeposits(_ completion:@escaping (_ depositsArray: Array<Deposit>?, _ error: NSError?) -> Void) {
+    public func getDeposits() async throws -> EnterpriseDepositResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseDepositRequest = try JSONDecoder().decode(EnterpriseDepositResponse.self, from: data)
+        return enterpriseDepositRequest
     }
     
-    public mutating func getDeposit(_ bilId: String, completion: @escaping (_ customer: Deposit?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getDeposit(_ depositId: String) async throws -> Deposit? {
+        self.id = depositId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let deposit = try JSONDecoder().decode(Deposit.self, from: data)
+        return deposit
     }
 }
 

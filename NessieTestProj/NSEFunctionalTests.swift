@@ -387,85 +387,77 @@ class CustomerTests {
 
 class DepositsTests {
     let client = NSEClient.sharedInstance
+    let accountId = "59df8251ceb8abe24251c1e6"
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllDepositsFromAccount()
+        await testGetAllDepositsFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d213d71fd43e204dd4841e", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    func testGetDeposit(depositId: String) async {
+        do {
+            if let deposit = try await DepositRequest().getDeposit(depositId) {
+                print(deposit)
+                await self.testPostDeposit()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
     
-    func testGetDeposit(depositId: String) {
-        DepositRequest().getDeposit(depositId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let deposit = response as Deposit? {
-                    print(deposit)
-                    self.testPostDeposit()
+    func testGetAllDepositsFromAccount() async {
+        do {
+            if let deposits = try await DepositRequest().getDepositsFromAccountId(accountId) {
+                if deposits.count > 0 {
+                    let deposit = deposits[0]
+                    print(deposits)
+                    await self.testGetDeposit(depositId: deposit.depositId)
+                } else {
+                    print("No deposits found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllDepositsFromAccount() {
-        DepositRequest().getDepositsFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Deposit>? {
-                    if array.count > 0 {
-                        let deposit = array[0]
-                        print(array)
-                        self.testGetDeposit(depositId: deposit.depositId)
-                    } else {
-                        print("No deposits found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostDeposit() {
-        let depositToCreate = Deposit(depositId: "", status: .Pending, medium: .Balance, payeeId: "asd", amount: 1, type: "merchant", transactionDate: Date(), description: "Description")
-        DepositRequest().postDeposit(depositToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let depositResponse = response as BaseResponse<Deposit>?
-                let message = depositResponse?.message
-                let depositCreated = depositResponse?.object
+    func testPostDeposit() async {
+        do {
+            let depositToCreate = DepositPostData(medium: .Balance, amount: 20)
+            if let depositPostResponse = try await DepositRequest().postDeposit(accountId, depositToCreate) {
+                let message = depositPostResponse.message
+                let depositCreated = depositPostResponse.objectCreated
                 print("\(message): \(depositCreated)")
-                self.testPutDeposit(deposit: depositCreated!)
+                await self.testPutDeposit(depositId: depositCreated!.depositId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutDeposit(deposit: Deposit) {
-        deposit.medium = .Rewards
-        DepositRequest().putDeposit(deposit, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let depositResponse = response as BaseResponse<Deposit>?
-                let message = depositResponse?.message
+    func testPutDeposit(depositId: String) async {
+        do {
+            let depositToUpdate = DepositPutData(medium: .Balance, amount: 100)
+            if let depositPutResponse = try await DepositRequest().putDeposit(depositId, depositToUpdate) {
+                let message = depositPutResponse.message
                 print("\(message)")
-                self.testDeleteDeposit(depositId: deposit.depositId)
+                await self.testDeleteDeposit(depositId: depositId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteDeposit(depositId: String) {
-        DepositRequest().deleteDeposit(depositId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let DepositResponse = response as BaseResponse<Deposit>?
-                let message = DepositResponse?.message
+    func testDeleteDeposit(depositId: String) async {
+        do {
+            if let depositDeleteResponse = try await DepositRequest().deleteDeposit(depositId) {
+                let message = depositDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -1044,45 +1036,36 @@ class EnterpriseCustomerTests {
 
 class EnterpriseDepositTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseDepositRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetDeposits()
+        await self.testGetDeposits()
     }
     
-    func testGetDeposits() {
-        let request = EnterpriseDepositRequest()
-        request.getDeposits(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Deposit>? {
-                    if array.count > 0 {
-                        let deposit = array[0] as Deposit?
-                        self.testGetDeposit(depositId: deposit!.depositId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetDeposits() async {
+        do {
+            if let enterpriseDepositResponse = try await request.getDeposits() {
+                if enterpriseDepositResponse.results.count > 0 {
+                    let deposit = enterpriseDepositResponse.results[0]
+                    await self.testGetDeposit(depositId: deposit.depositId)
+                    print(enterpriseDepositResponse.results)
+                } else {
+                    print("No deposits found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetDeposit(depositId: String) {
-        var request = EnterpriseDepositRequest()
-        request.getDeposit(depositId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Deposit? {
-                        print(account)
-                    }
-                }
+    func testGetDeposit(depositId: String) async {
+        do {
+            if let deposit = try await request.getDeposit(depositId) {
+                print(deposit)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
