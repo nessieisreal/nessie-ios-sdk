@@ -30,7 +30,7 @@ public enum TransactionStatus : String, Codable {
     case Unknown
 }
 
-public struct Deposit: Decodable, JsonParser {
+public struct Deposit: Decodable {
     public var depositId: String
     public var status: TransactionStatus
     public var medium: TransactionMedium
@@ -49,17 +49,6 @@ public struct Deposit: Decodable, JsonParser {
         self.type = type
         self.transactionDate = transactionDate
         self.description = description
-    }
-    
-    public init(data: JSON) {
-        self.depositId = data["_id"].string ?? ""
-        self.status = TransactionStatus(rawValue: data["status"].string ?? "") ?? .Unknown
-        self.medium = TransactionMedium(rawValue: data["medium"].string ?? "") ?? .Unknown
-        self.payeeId = data["payee_id"].string ?? ""
-        self.amount = data["amount"].int ?? 0
-        self.type = TransactionType(rawValue: data["type"].string ?? "") ?? .Unknown
-        self.transactionDate = data["transaction_date"].string ?? ""
-        self.description = data["description"].string ?? ""
     }
     
     enum CodingKeys: String, CodingKey {
