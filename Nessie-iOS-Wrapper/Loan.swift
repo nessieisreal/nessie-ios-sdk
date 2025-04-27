@@ -9,25 +9,26 @@
 import Foundation
 import SwiftyJSON
 
-public enum LoanType: String {
-    case auto, home, smallBusiness="small business", unknown
+public enum LoanType: String, Codable {
+    case auto, home, unknown
+    case smallBusiness="small business"
 }
 
-public enum LoanStatus: String {
+public enum LoanStatus: String, Codable {
     case pending, approved, declined, unknown
 }
 
-open class Loan: JsonParser {
-    open var loanId: String
-    open var type: LoanType
-    open var status: LoanStatus
-    open var creditScore: Int
-    open var monthlyPayment: Double
-    open var amount: Int
-    open var creationDate: Date?
-    open var description: String?
+public struct Loan: Decodable {
+    public var loanId: String
+    public var type: LoanType
+    public var status: LoanStatus
+    public var creditScore: Int
+    public var monthlyPayment: Double
+    public var amount: Int
+    public var creationDate: String?
+    public var description: String?
     
-    public init(loanId: String, type: LoanType, status: LoanStatus, creditScore: Int, monthlyPayment: Double, amount: Int, creationDate: Date?, description: String?) {
+    public init(loanId: String, type: LoanType, status: LoanStatus, creditScore: Int, monthlyPayment: Double, amount: Int, creationDate: String?, description: String?) {
         self.loanId = loanId
         self.type = type
         self.status = status
@@ -38,16 +39,80 @@ open class Loan: JsonParser {
         self.description = description
     }
     
-    public required init(data: JSON) {
-        self.loanId = data["_id"].string ?? ""
-        self.type = LoanType(rawValue: data["type"].string ?? "") ?? .unknown
-        self.status = LoanStatus(rawValue: data["status"].string ?? "") ?? .unknown
-        self.creditScore = data["credit_score"].int ?? 0
-        self.monthlyPayment = data["monthly_payment"].double ?? 0
-        self.amount = data["amount"].int ?? 0
-        self.creationDate = data["creation_date"].string?.stringToDate()
-        self.description = data["description"].string
+    enum CodingKeys: String, CodingKey {
+        case type, status, amount, description
+
+        case loanId = "_id"
+        case creditScore = "credit_score"
+        case monthlyPayment = "monthly_payment"
+        case creationDate = "creation_date"
     }
+}
+
+public struct LoanPostData: Encodable {
+    public var type: LoanType
+    public var status: LoanStatus
+    public var creditScore: Int
+    public var monthlyPayment: Double
+    public var amount: Int
+    public var description: String?
+    
+    public init(type: LoanType, status: LoanStatus, creditScore: Int, monthlyPayment: Double, amount: Int, description: String?) {
+        self.type = type
+        self.status = status
+        self.creditScore = creditScore
+        self.monthlyPayment = monthlyPayment
+        self.amount = amount
+        self.description = description
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case type, status, amount, description
+
+        case creditScore = "credit_score"
+        case monthlyPayment = "monthly_payment"
+    }
+}
+
+public struct LoanPostResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+    public var objectCreated: Loan?
+}
+
+public struct LoanPutData: Encodable {
+    public var type: LoanType?
+    public var status: LoanStatus?
+    public var creditScore: Int?
+    public var monthlyPayment: Double?
+    public var amount: Int?
+    
+    public init(type: LoanType? = nil, status: LoanStatus? = nil, creditScore: Int? = nil, monthlyPayment: Double? = nil, amount: Int? = nil) {
+        self.type = type
+        self.status = status
+        self.creditScore = creditScore
+        self.monthlyPayment = monthlyPayment
+        self.amount = amount
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case type, status, amount
+
+        case creditScore = "credit_score"
+        case monthlyPayment = "monthly_payment"
+    }
+}
+
+public struct LoanPutResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+}
+
+public struct LoanDeleteResponse: Decodable {
+    public var code: Int?
+    public var message: String?
 }
 
 open class LoanRequest {
@@ -74,121 +139,73 @@ open class LoanRequest {
     }
     
     // APIs
-    open func getLoan(_ loanId: String, completion: @escaping (_ loan: Loan?, _ error: NSError?) -> Void) {
+    open func getLoan(_ loanId: String) async throws -> Loan? {
         requestType = HTTPType.GET
         self.loanId = loanId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Loan>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let loan = try JSONDecoder().decode(Loan.self, from: data)
+        return loan
     }
     
-    open func getLoansFromAccountId(_ accountId: String, completion: @escaping (_ loanArrays: Array<Loan>?, _ error: NSError?) -> Void) {
+    open func getLoansFromAccountId(_ accountId: String) async throws -> [Loan]? {
         requestType = HTTPType.GET
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Loan>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let loans = try JSONDecoder().decode([Loan].self, from: data)
+        return loans
     }
     
-    open func postLoan(_ newLoan: Loan, accountId: String, completion: @escaping (_ loanResponse: BaseResponse<Loan>?, _ error: NSError?) -> Void) {
+    open func postLoan(_ accountId: String, _ newLoan: LoanPostData) async throws -> LoanPostResponse? {
         requestType = HTTPType.POST
         self.accountId = accountId
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
-        var params: Dictionary<String, Any> = ["type": newLoan.type.rawValue,
-                                               "status": newLoan.status.rawValue,
-                                               "credit_score": newLoan.creditScore,
-                                               "monthly_payment": newLoan.monthlyPayment,
-                                               "amount": newLoan.amount]
-
-        if let description = newLoan.description {
-            params["description"] = description
-        }
-        
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(newLoan)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Loan>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let loanPostResponse = try JSONDecoder().decode(LoanPostResponse.self, from: data)
+        return loanPostResponse
     }
     
-    open func putLoan(_ updatedLoan: Loan, completion: @escaping (_ loanResponse: BaseResponse<Loan>?, _ error: NSError?) -> Void) {
+    open func putLoan(_ loanId: String, _ updatedLoan: LoanPutData) async throws -> LoanPutResponse? {
         requestType = HTTPType.PUT
-        loanId = updatedLoan.loanId
+        self.loanId = loanId
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
-        var params: Dictionary<String, Any> = ["type": updatedLoan.type.rawValue,
-                                               "status": updatedLoan.status.rawValue,
-                                               "credit_score": updatedLoan.creditScore,
-                                               "monthly_payment": updatedLoan.monthlyPayment,
-                                               "amount": updatedLoan.amount]
-        
-        if let description = updatedLoan.description {
-            params["description"] = description
-        }
-        
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(updatedLoan)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Loan>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let loanPutResponse = try JSONDecoder().decode(LoanPutResponse.self, from: data)
+        return loanPutResponse
     }
     
-    open func deleteLoan(_ loanId: String, completion: @escaping (_ loanResponse: BaseResponse<Loan>?, _ error: NSError?) -> Void) {
+    open func deleteLoan(_ loanId: String) async throws -> LoanDeleteResponse? {
         requestType = HTTPType.DELETE
         self.loanId = loanId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let response = BaseResponse<Loan>(requestArray: nil, object: nil, message: "Loan deleted")
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        guard !data.isEmpty else {
+            return LoanDeleteResponse(code: 204, message: "Loan Deleted")
+        }
+        let loanDeleteResponse = try JSONDecoder().decode(LoanDeleteResponse.self, from: data)
+        return loanDeleteResponse
     }
 }

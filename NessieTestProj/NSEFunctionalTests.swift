@@ -473,83 +473,73 @@ class LoanTests {
     init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        await testCreateLoan()
+        await testPostLoan()
     }
     
-    func testGetLoans(accountId: String) {
-        LoanRequest().getLoansFromAccountId(accountId) { (loans, error) in
-            if let error = error {
-                print(error)
-            }
-            if let loans = loans {
-                print("\(loans.count) loans")
-                for loan in loans {
-                    print(loan.description ?? "Amount: \(loan.amount), credit score: \(loan.creditScore)")
+    func testGetLoans(accountId: String) async {
+        do {
+            if let loans = try await LoanRequest().getLoansFromAccountId(accountId) {
+                if loans.count > 0 {
+                    print(loans)
+                } else {
+                    print("No loans found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testCreateLoan() async {
+    func testPostLoan() async {
         do {
             if let accountPostResponse = try await AccountRequest().postAccount(account) {
                 let accountId = accountPostResponse.objectCreated?.accountId ?? ""
-                let loan = Loan(loanId: "abcd1234", type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, creationDate: Date(), description: "A home loan for the ages")
-                LoanRequest().postLoan(loan, accountId: accountId, completion: { (loanResponse, error) in
-                    if let error = error {
-                        print(error)
-                    }
-                    else if let loanResponse = loanResponse {
-                        let message = loanResponse.message
-                        let loanCreated = loanResponse.object
-                        print("\(message): \(loanCreated)")
-
-//                        self.testGetLoans(accountId: accountId)
-//                        self.testGetLoan(loanId: loan.loanId)
-//                        self.testUpdateLoan(loan: loanCreated!)
-                        self.testDeleteLoan(loanId: loanCreated!.loanId)
-                    }
-                })
+                let loanToCreate = LoanPostData(type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, description: "A home loan for the ages")
+                if let loanPostResponse = try await LoanRequest().postLoan(accountId, loanToCreate) {
+                    let message = loanPostResponse.message
+                    let loanCreated = loanPostResponse.objectCreated
+                    print("\(message): \(loanCreated)")
+                    await self.testGetLoans(accountId: accountId)
+                    await self.testGetLoan(loanId: loanCreated!.loanId)
+                    await self.testPutLoan(loanId: loanCreated!.loanId)
+                }
             }
-        } catch {
-            
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetLoan(loanId: String) {
-        LoanRequest().getLoan(loanId) { (loan, error) in
-            if let error = error {
-                print(error)
+    func testGetLoan(loanId: String) async {
+        do {
+            if let loan = try await LoanRequest().getLoan(loanId) {
+                print(loan)
             }
-            if let loan = loan {
-                print("Amount: \(loan.amount), credit score: \(loan.creditScore)")
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testUpdateLoan(loan: Loan) {
-        let originalLoanId = loan.loanId
-        loan.creditScore = 600
-        LoanRequest().putLoan(loan) { (loanResponse, error) in
-            if let error = error {
-                print(error)
+    func testPutLoan(loanId: String) async {
+        do {
+            let loanToUpdate = LoanPutData(type: .auto, status: .approved, monthlyPayment: 400)
+            if let loanPutResponse = try await LoanRequest().putLoan(loanId, loanToUpdate) {
+                let message = loanPutResponse.message
+                print("\(message)")
+                await self.testDeleteLoan(loanId: loanId)
             }
-            if let loanResponse = loanResponse, let loan = loanResponse.object {
-                print(loanResponse.message!)
-                self.testGetLoan(loanId: originalLoanId)
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testDeleteLoan(loanId: String) {
-        LoanRequest().deleteLoan(loanId) { (loanResponse, error) in
-            if let error = error {
-                print(error)
+    func testDeleteLoan(loanId: String) async {
+        do {
+            if let loanDeleteResponse = try await LoanRequest().deleteLoan(loanId) {
+                let message = loanDeleteResponse.message
+                print("\(message)")
             }
-            if let loanResponse = loanResponse {
-                print(loanResponse.message!)
-                self.testGetLoan(loanId: loanId)
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
