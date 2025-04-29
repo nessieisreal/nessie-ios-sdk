@@ -547,13 +547,13 @@ class LoanTests {
 class PurchasesTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllPurchasesFromAccount()
+        await testGetAllPurchasesFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d32a5ce63c5995587e85ec",
+    var account: Account = Account(accountId: "5cf88b096759394351beee67",
                                    accountType:.CreditCard,
                                    nickname: "Hola",
                                    rewards: 10,
@@ -570,110 +570,103 @@ class PurchasesTests {
                                                        zipCode: "07009"),
                                       geocode: Geocode(lng: -1, lat: 33))
     
-    func testGetPurchase(PurchaseId: String) {
-        PurchaseRequest().getPurchase(PurchaseId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let purchase = response as Purchase? {
-                    print(purchase)
-                    self.testPostPurchase()
+    func testGetPurchase(purchaseId: String) async {
+        do {
+            if let purchase = try await PurchaseRequest().getPurchase(purchaseId) {
+                print(purchase)
+                await self.testPostPurchase()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllPurchasesFromMerchant() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantId(merchant.merchantId) {
+                if purchases.count > 0 {
+                    print(purchases)
+                } else {
+                    print("No purchases found")
                 }
             }
-        })
+            await self.testGetAllPurchasesFromMerchantAndAccount()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromMerchant() {
-        PurchaseRequest().getPurchasesFromMerchantId(merchant.merchantId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        print(array)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testGetAllPurchasesFromAccount() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromAccountId(account.accountId) {
+                if purchases.count > 0 {
+                    let purchase = purchases[0]
+                    print(purchases)
+                    await self.testGetPurchase(purchaseId: purchase.purchaseId)
+                } else {
+                    print("No purchases found")
                 }
             }
-            self.testGetAllPurchasesFromMerchantAndAccount()
-        })
+            await self.testGetAllPurchasesFromMerchantAndAccount()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromAccount() {
-        PurchaseRequest().getPurchasesFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        let purchase = array[0]
-                        print(array)
-                        self.testGetPurchase(PurchaseId: purchase.purchaseId)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testGetAllPurchasesFromMerchantAndAccount() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: account.accountId) {
+                if purchases.count > 0 {
+                    print(purchases)
+                } else {
+                    print("No purchases found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromMerchantAndAccount() {
-        PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        print(array)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testPostPurchase() async {
+        do {
+            if let accountPostResponse = try await AccountRequest().postAccount(account) {
+                let accountId = accountPostResponse.objectCreated?.accountId ?? ""
+                let purchaseToCreate = PurchasePostData(merchantId: "57cf75cea73e494d8675ec49", medium: .Balance, amount: 100)
+                if let purchasePostResponse = try await PurchaseRequest().postPurchase(accountId: accountId, purchaseToCreate) {
+                    let message = purchasePostResponse.message
+                    let purchaseCreated = purchasePostResponse.objectCreated
+                    print("\(message): \(purchaseCreated)")
+                    await self.testPutPurchase(purchaseId: purchaseCreated!.purchaseId)
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostPurchase() {
-        let purchaseToCreate = Purchase(merchantId: "57cf75cea73e494d8675ec49", status: .Cancelled, medium: .Balance, payerId: account.accountId, amount: 4.5, type: "merchant", purchaseDate: Date(), description: "Description", purchaseId: "asd")
-        PurchaseRequest().postPurchase(purchaseToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let purchaseResponse = response as BaseResponse<Purchase>?
-                let message = purchaseResponse?.message
-                let purchaseCreated = purchaseResponse?.object
-                print("\(message): \(purchaseCreated)")
-                self.testPutPurchase(purchase: purchaseCreated!)
-            }
-        })
-    }
-    
-    func testPutPurchase(purchase: Purchase) {
-        purchase.medium = .Rewards
-        PurchaseRequest().putPurchase(purchase, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let purchaseResponse = response as BaseResponse<Purchase>?
-                let message = purchaseResponse?.message
+    func testPutPurchase(purchaseId: String) async {
+        do {
+            let purchaseToUpdate = PurchasePutData(payerId: account.accountId, medium: .Balance, amount: 25)
+            if let purchasePutResponse = try await PurchaseRequest().putPurchase(purchaseId, purchaseToUpdate) {
+                let message = purchasePutResponse.message
                 print("\(message)")
-                self.testDeletePurchase(purchaseId: purchase.purchaseId)
+                await self.testDeletePurchase(purchaseId: purchaseId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeletePurchase(purchaseId: String) {
-        PurchaseRequest().deletePurchase(purchaseId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let PurchaseResponse = response as BaseResponse<Purchase>?
-                let message = PurchaseResponse?.message
+    func testDeletePurchase(purchaseId: String) async {
+        do {
+            if let purchaseDeleteResponse = try await PurchaseRequest().deletePurchase(purchaseId) {
+                let message = purchaseDeleteResponse.message
                 print("\(message)")
-                self.testGetAllPurchasesFromMerchant()
+                await self.testGetAllPurchasesFromMerchant()
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 

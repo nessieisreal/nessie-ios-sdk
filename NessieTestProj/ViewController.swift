@@ -50,7 +50,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testPurchasesRequests(sender: AnyObject) {
-        let _ = PurchasesTests()
+        Task { @MainActor in
+            let _ = await PurchasesTests()
+        }
     }
     
     @IBAction func testMerchantsRequests(sender: UIButton) {
