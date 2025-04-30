@@ -183,44 +183,32 @@ public struct EnterpriseMerchantRequest: Enterprise {
     }
 }
 
+public struct EnterpriseTransferResponse: Decodable {
+    public var results: [Transfer]
+}
+
 public struct EnterpriseTransferRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "transfers"
     
     public init () {}
     
-    public func getTransfers(_ completion:@escaping (_ transfersArray: Array<Transfer>?, _ error: NSError?) -> Void) {
+    public func getTransfers() async throws -> EnterpriseTransferResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseTransferResponse = try JSONDecoder().decode(EnterpriseTransferResponse.self, from: data)
+        return enterpriseTransferResponse
     }
     
-    public mutating func getTransfer(_ bilId: String, completion: @escaping (_ customer: Transfer?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getTransfer(_ transferId: String) async throws -> Transfer? {
+        self.id = transferId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let transfer = try JSONDecoder().decode(Transfer.self, from: data)
+        return transfer
     }
 }
 

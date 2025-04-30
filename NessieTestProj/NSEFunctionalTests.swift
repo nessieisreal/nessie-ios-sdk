@@ -744,84 +744,77 @@ class MerchantTests {
 class TransfersTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllTransfersFromAccount()
+        await testGetAllTransfersFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d34859e63c5995587e8613", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    var account: Account = Account(accountId: "59df8251ceb8abe24251c1e6", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
     
-    func testGetTransfer(TransferId: String) {
-        TransferRequest().getTransfer(TransferId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let transfer = response as Transfer? {
-                    print(transfer)
-                    self.testPostTransfer()
+    func testGetTransfer(transferId: String) async {
+        do {
+            if let transfer = try await TransferRequest().getTransfer(transferId) {
+                print(transfer)
+                await self.testPostTransfer()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllTransfersFromAccount() async {
+        do {
+            if let transfers = try await TransferRequest().getTransfersFromAccountId(account.accountId) {
+                if transfers.count > 0 {
+                    let transfer = transfers[0]
+                    print(transfers)
+                    await self.testGetTransfer(transferId: transfer.transferId)
+                } else {
+                    print("No transfers found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllTransfersFromAccount() {
-        TransferRequest().getTransfersFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Transfer>? {
-                    if array.count > 0 {
-                        let transfer = array[0]
-                        print(array)
-                        self.testGetTransfer(TransferId: transfer.transferId)
-                    } else {
-                        print("No transfers found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostTransfer() {
-        let transferToCreate = Transfer(transferId: "", type: .Deposit, transactionDate: Date(), status: .Pending, medium: .Balance, payerId: "57d34859e63c5995587e8613", payeeId: "57d359e7e63c5995587e8620", amount: 12, description: "Desc")
-        TransferRequest().postTransfer(transferToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let transferResponse = response as BaseResponse<Transfer>?
-                let message = transferResponse?.message
-                let transferCreated = transferResponse?.object
+    func testPostTransfer() async {
+        do {
+            let transferToCreate = TransferPostData(medium: .Balance, payeeId: "5b181426f0cec56abfa418e3", amount: 20)
+            if let transferPostResponse = try await TransferRequest().postTransfer(account.accountId, transferToCreate) {
+                let message = transferPostResponse.message
+                let transferCreated = transferPostResponse.objectCreated
                 print("\(message): \(transferCreated)")
-                self.testPutTransfer(transfer: transferCreated!)
+                await self.testPutTransfer(transferId: transferCreated!.transferId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutTransfer(transfer: Transfer) {
-        transfer.medium = .Rewards
-        TransferRequest().putTransfer(transfer, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let transferResponse = response as BaseResponse<Transfer>?
-                let message = transferResponse?.message
+    func testPutTransfer(transferId: String) async {
+        do {
+            let transferToUpdate = TransferPutData(medium: .Balance, payeeId: "5b181426f0cec56abfa418e3", amount: 25)
+            if let transferPutResponse = try await TransferRequest().putTransfer(transferId, transferToUpdate) {
+                let message = transferPutResponse.message
                 print("\(message)")
-                self.testDeleteTransfer(transferId: transfer.transferId)
+                await self.testDeleteTransfer(transferId: transferId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteTransfer(transferId: String) {
-        TransferRequest().deleteTransfer(transferId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let TransferResponse = response as BaseResponse<Transfer>?
-                let message = TransferResponse?.message
+    func testDeleteTransfer(transferId: String) async {
+        do {
+            if let transferDeleteResponse = try await TransferRequest().deleteTransfer(transferId) {
+                let message = transferDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -1100,45 +1093,36 @@ class EnterpriseMerchantTests {
 
 class EnterpriseTransferTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseTransferRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetTransfers()
+        await self.testGetTransfers()
     }
     
-    func testGetTransfers() {
-        let request = EnterpriseTransferRequest()
-        request.getTransfers(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Transfer>? {
-                    if array.count > 0 {
-                        let transfer = array[0] as Transfer?
-                        self.testGetTransfer(transferId: transfer!.transferId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetTransfers() async {
+        do {
+            if let enterpriseTransferResponse = try await request.getTransfers() {
+                if enterpriseTransferResponse.results.count > 0 {
+                    let transfer = enterpriseTransferResponse.results[0]
+                    await self.testGetTransfer(transferId: transfer.transferId)
+                    print(enterpriseTransferResponse.results)
+                } else {
+                    print("No transfers found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetTransfer(transferId: String) {
-        var request = EnterpriseTransferRequest()
-        request.getTransfer(transferId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Transfer? {
-                        print(account)
-                    }
-                }
+    func testGetTransfer(transferId: String) async {
+        do {
+            if let transfer = try await request.getTransfer(transferId) {
+                print(transfer)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }

@@ -42,7 +42,9 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseTransfersRequests(sender: AnyObject) {
-        let _ = EnterpriseTransferTests()
+        Task { @MainActor in
+            let _ = await EnterpriseTransferTests()
+        }
     }
     
     @IBAction func testEnterpriseWithdrawalsRequests(sender: AnyObject) {

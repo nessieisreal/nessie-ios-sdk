@@ -60,7 +60,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testTransfersRequests(sender: AnyObject) {
-        let _ = TransfersTests()
+        Task { @MainActor in
+            let _ = await TransfersTests()
+        }
     }
     
     @IBAction func testWithdrawalsRequests(sender: UIButton) {
