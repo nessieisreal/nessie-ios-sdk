@@ -212,43 +212,31 @@ public struct EnterpriseTransferRequest: Enterprise {
     }
 }
 
+public struct EnterpriseWithdrawalResponse: Decodable {
+    public var results: [Withdrawal]
+}
+
 public struct EnterpriseWithdrawalRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "withdrawals"
     
     public init () {}
     
-    public func getWithdrawals(_ completion:@escaping (_ withdrawalsArray: Array<Withdrawal>?, _ error: NSError?) -> Void) {
+    public func getWithdrawals() async throws -> EnterpriseWithdrawalResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseWithdrawalResponse = try JSONDecoder().decode(EnterpriseWithdrawalResponse.self, from: data)
+        return enterpriseWithdrawalResponse
     }
     
-    public mutating func getWithdrawal(_ bilId: String, completion: @escaping (_ customer: Withdrawal?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getWithdrawal(_ withdrawalId: String) async throws -> Withdrawal? {
+        self.id = withdrawalId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawal = try JSONDecoder().decode(Withdrawal.self, from: data)
+        return withdrawal
     }
 }

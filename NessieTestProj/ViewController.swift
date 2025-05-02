@@ -66,7 +66,9 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testWithdrawalsRequests(sender: UIButton) {
-        let _ = WithdrawalsTests()
+        Task { @MainActor in
+            let _ = await WithdrawalsTests()
+        }
     }
     @IBAction func testLoanRequests(sender: UIButton) {
         Task { @MainActor in

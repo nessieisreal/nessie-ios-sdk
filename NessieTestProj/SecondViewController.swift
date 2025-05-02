@@ -48,6 +48,8 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseWithdrawalsRequests(sender: AnyObject) {
-        let _ = EnterpriseWithdrawalTests()
+        Task { @MainActor in
+            let _ = await EnterpriseWithdrawalTests()
+        }
     }
 }

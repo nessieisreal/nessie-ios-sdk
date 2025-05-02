@@ -239,8 +239,8 @@ open class TransferRequest {
         guard !data.isEmpty else {
             return TransferDeleteResponse(code: 204, message: "Transfer Deleted")
         }
-        let purchaseDeleteResponse = try JSONDecoder().decode(TransferDeleteResponse.self, from: data)
-        return purchaseDeleteResponse
+        let transferDeleteResponse = try JSONDecoder().decode(TransferDeleteResponse.self, from: data)
+        return transferDeleteResponse
     }
     
 }

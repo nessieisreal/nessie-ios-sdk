@@ -821,84 +821,77 @@ class TransfersTests {
 class WithdrawalsTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllWithdrawalsFromAccount()
+        await testGetAllWithdrawalsFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d34859e63c5995587e8613", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    var account: Account = Account(accountId: "59df8251ceb8abe24251c1e6", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
     
-    func testGetWithdrawal(WithdrawalId: String) {
-        WithdrawalRequest().getWithdrawal(WithdrawalId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let withdrawal = response as Withdrawal? {
-                    print(withdrawal)
-                    self.testPostWithdrawal()
+    func testGetWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawal = try await WithdrawalRequest().getWithdrawal(withdrawalId) {
+                print(withdrawal)
+                await self.testPostWithdrawal()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllWithdrawalsFromAccount() async {
+        do {
+            if let withdrawals = try await WithdrawalRequest().getWithdrawalsFromAccountId(account.accountId) {
+                if withdrawals.count > 0 {
+                    let withdrawal = withdrawals[0]
+                    print(withdrawals)
+                    await self.testGetWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                } else {
+                    print("No withdrawals found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllWithdrawalsFromAccount() {
-        WithdrawalRequest().getWithdrawalsFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Withdrawal>? {
-                    if array.count > 0 {
-                        let withdrawal = array[0]
-                        print(array)
-                        self.testGetWithdrawal(WithdrawalId: withdrawal.withdrawalId)
-                    } else {
-                        print("No withdrawals found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostWithdrawal() {
-        let withdrawalToCreate = Withdrawal(withdrawalId: "", type: .Deposit, transactionDate: Date(), status: .Cancelled, medium: .Balance, payerId: "57d34859e63c5995587e8613", amount: 12, description: "Desc")
-        WithdrawalRequest().postWithdrawal(withdrawalToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let withdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = withdrawalResponse?.message
-                let withdrawalCreated = withdrawalResponse?.object
+    func testPostWithdrawal() async {
+        do {
+            let withdrawalToCreate = WithdrawalPostData(medium: .Balance, amount: 20)
+            if let withdrawalPostResponse = try await WithdrawalRequest().postWithdrawal(account.accountId, withdrawalToCreate) {
+                let message = withdrawalPostResponse.message
+                let withdrawalCreated = withdrawalPostResponse.objectCreated
                 print("\(message): \(withdrawalCreated)")
-                self.testPutWithdrawal(withdrawal: withdrawalCreated!)
+                await self.testPutWithdrawal(withdrawalId: withdrawalCreated!.withdrawalId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutWithdrawal(withdrawal: Withdrawal) {
-        withdrawal.medium = .Rewards
-        WithdrawalRequest().putWithdrawal(withdrawal, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let withdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = withdrawalResponse?.message
+    func testPutWithdrawal(withdrawalId: String) async {
+        do {
+            let withdrawalToUpdate = WithdrawalPutData(medium: .Balance, amount: 25)
+            if let withdrawalPutResponse = try await WithdrawalRequest().putWithdrawal(withdrawalId, withdrawalToUpdate) {
+                let message = withdrawalPutResponse.message
                 print("\(message)")
-                self.testDeleteWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                await self.testDeleteWithdrawal(withdrawalId: withdrawalId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteWithdrawal(withdrawalId: String) {
-        WithdrawalRequest().deleteWithdrawal(withdrawalId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let WithdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = WithdrawalResponse?.message
+    func testDeleteWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawalDeleteResponse = try await WithdrawalRequest().deleteWithdrawal(withdrawalId) {
+                let message = withdrawalDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -1129,45 +1122,36 @@ class EnterpriseTransferTests {
 
 class EnterpriseWithdrawalTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseWithdrawalRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetWithdrawals()
+        await self.testGetWithdrawals()
     }
     
-    func testGetWithdrawals() {
-        let request = EnterpriseWithdrawalRequest()
-        request.getWithdrawals(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Withdrawal>? {
-                    if array.count > 0 {
-                        let withdrawal = array[0] as Withdrawal?
-                        self.testGetWithdrawal(withdrawalId: withdrawal!.withdrawalId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetWithdrawals() async {
+        do {
+            if let enterpriseWithdrawalResponse = try await request.getWithdrawals() {
+                if enterpriseWithdrawalResponse.results.count > 0 {
+                    let withdrawal = enterpriseWithdrawalResponse.results[0]
+                    await self.testGetWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                    print(enterpriseWithdrawalResponse.results)
+                } else {
+                    print("No withdrawals found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetWithdrawal(withdrawalId: String) {
-        var request = EnterpriseWithdrawalRequest()
-        request.getWithdrawal(withdrawalId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Withdrawal? {
-                        print(account)
-                    }
-                }
+    func testGetWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawal = try await request.getWithdrawal(withdrawalId) {
+                print(withdrawal)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
