@@ -38,7 +38,9 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseMerchantsRequests(sender: AnyObject) {
-        let _ = EnterpriseMerchantTests()
+        Task { @MainActor in
+            let _ = await EnterpriseMerchantTests()
+        }
     }
     
     @IBAction func testEnterpriseTransfersRequests(sender: AnyObject) {

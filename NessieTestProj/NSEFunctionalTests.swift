@@ -561,8 +561,8 @@ class PurchasesTests {
                                    accountNumber: "1234567890123456",
                                    customerId: "57d0c20d1fd43e204dd48282")
     let merchant: Merchant = Merchant(merchantId: "57cf75cea73e494d8675ec49",
-                                      name: "Best Productions",
-                                      category: ["Production"],
+                                      name: "Best Productions", creationDate: "2025-05-09",
+                                      category: "Production",
                                       address: Address(streetName: "Lafayette St.",
                                                        streetNumber: "5901",
                                                        city: "Brooklyn",
@@ -673,71 +673,62 @@ class PurchasesTests {
 class MerchantTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        testGetMerchants()
+        await testGetMerchants()
     }
     
-    func testGetMerchants() {
-        MerchantRequest().getMerchants(completion: {(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Merchant>? {
-                    if array.count > 0 {
-                        let merchant = array[0] as Merchant?
-                        self.testGetMerchant(merchantId: merchant!.merchantId)
-                        print(array)
-                    } else {
-                        print("No merchants found")
-                    }
+    func testGetMerchants() async {
+        do {
+            if let merchants = try await MerchantRequest().getMerchants() {
+                if merchants.count > 0 {
+                    let merchant = merchants[0]
+                    await self.testGetMerchant(merchantId: merchant.merchantId)
+                    print(merchants)
+                } else {
+                    print("No merchants found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetMerchant(merchantId: String) {
-        MerchantRequest().getMerchant(merchantId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let merchant = response as Merchant? {
-                    print(merchant)
-                }
+    func testGetMerchant(merchantId: String) async {
+        do {
+            if let merchant = try await MerchantRequest().getMerchant(merchantId) {
+                print(merchant)
             }
-            self.testPostMerchant()
-        })
+            await self.testPostMerchant()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostMerchant() {
-        let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
-        let geocode = Geocode(lng: 1, lat: 0)
-        let merchantToCreate = Merchant(merchantId: "", name: "Name", category: ["Cateogry"], address: address, geocode: geocode)
-        MerchantRequest().postMerchant(merchantToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let merchantResponse = response as BaseResponse<Merchant>?
-                let message = merchantResponse?.message
-                let merchantCreated = merchantResponse?.object
+    func testPostMerchant() async {
+        do {
+            let merchantToCreate = MerchantPostData(name: "Test Merchant")
+            if let merchantPostResponse = try await MerchantRequest().postMerchant(merchantToCreate) {
+                let message = merchantPostResponse.message
+                let merchantCreated = merchantPostResponse.objectCreated
                 print("\(message): \(merchantCreated)")
-                self.testPutMerchant(merchantToBeModified: merchantCreated!)
+                await self.testPutMerchant(merchantId: merchantCreated!.merchantId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutMerchant(merchantToBeModified: Merchant) {
-        merchantToBeModified.name = "Raul"
-        MerchantRequest().putMerchant(merchantToBeModified, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Merchant>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutMerchant(merchantId: String) async {
+        do {
+            let merchantToUpdate = MerchantPutData(name: "Updated Merchant")
+            if let merchantPutResponse = try await MerchantRequest().putMerchant(merchantId, merchantToUpdate) {
+                let message = merchantPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
@@ -1041,45 +1032,36 @@ class EnterpriseDepositTests {
 
 class EnterpriseMerchantTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseMerchantRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetMerchants()
+        await self.testGetMerchants()
     }
     
-    func testGetMerchants() {
-        let request = EnterpriseMerchantRequest()
-        request.getMerchants(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Merchant>? {
-                    if array.count > 0 {
-                        let merchant = array[0] as Merchant?
-                        self.testGetMerchant(merchantId: merchant!.merchantId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetMerchants() async {
+        do {
+            if let enterpriseMerchantResponse = try await request.getMerchants() {
+                if enterpriseMerchantResponse.results.count > 0 {
+                    let merchant = enterpriseMerchantResponse.results[0]
+                    await self.testGetMerchant(merchantId: merchant.merchantId)
+                    print(enterpriseMerchantResponse.results)
+                } else {
+                    print("No merchants found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetMerchant(merchantId: String) {
-        var request = EnterpriseMerchantRequest()
-        request.getMerchant(merchantId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Merchant? {
-                        print(account)
-                    }
-                }
+    func testGetMerchant(merchantId: String) async {
+        do {
+            if let merchant = try await request.getMerchant(merchantId) {
+                print(merchant)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }

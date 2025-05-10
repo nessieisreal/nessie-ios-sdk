@@ -67,10 +67,6 @@ public struct WithdrawalPutData: Encodable {
         self.amount = amount
         self.description = description
     }
-    
-    enum CodingKeys: String, CodingKey {
-        case medium, amount, description
-    }
 }
 
 public struct WithdrawalPutResponse: Decodable {

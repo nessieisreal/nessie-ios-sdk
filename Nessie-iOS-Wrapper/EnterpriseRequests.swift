@@ -142,44 +142,32 @@ public struct EnterpriseDepositRequest: Enterprise {
     }
 }
 
+public struct EnterpriseMerchantResponse: Decodable {
+    public var results: [Merchant]
+}
+
 public struct EnterpriseMerchantRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "merchants"
     
     public init () {}
     
-    public func getMerchants(_ completion:@escaping (_ merchantsArray: Array<Merchant>?, _ error: NSError?) -> Void) {
+    public func getMerchants() async throws -> EnterpriseMerchantResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseMerchantResponse = try JSONDecoder().decode(EnterpriseMerchantResponse.self, from: data)
+        return enterpriseMerchantResponse
     }
     
-    public mutating func getMerchant(_ bilId: String, completion: @escaping (_ customer: Merchant?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getMerchant(_ merchantId: String) async throws -> Merchant? {
+        self.id = merchantId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let merchant = try JSONDecoder().decode(Merchant.self, from: data)
+        return merchant
     }
 }
 
