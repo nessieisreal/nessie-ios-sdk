@@ -81,6 +81,16 @@ public struct BillPostData: Codable {
     public var recurringDate: Int?
     public let paymentAmount: Double
     
+    public init(status: BillStatus, payee: String, nickname: String? = nil, paymentDate: String? = nil, recurringDate: Int? = nil, paymentAmount: Double) {
+        self.status = status
+        self.payee = payee
+        self.nickname = nickname
+        self.paymentDate = paymentDate
+        self.recurringDate = recurringDate
+        self.paymentAmount = paymentAmount
+    }
+
+    
     enum CodingKeys: String, CodingKey {
         case status, payee, nickname
         case paymentDate = "payment_date"
@@ -206,19 +216,13 @@ open class BillRequest {
         return customerBills
     }
     
-    open func postBill(_ newBill: Bill) async throws -> BillPostResponse? {
+    open func postBill(_ accountId: String, _ newBill: BillPostData) async throws -> BillPostResponse? {
         
         self.requestType = HTTPType.POST
-        self.accountId = newBill.accountId
+        self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType!)
-        
-        var billPostData = BillPostData(status: newBill.status, payee: newBill.payee, paymentAmount: newBill.paymentAmount)
-        
-        if let nickname = newBill.nickname {
-            billPostData.nickname = nickname
-        }
         
         if let paymentDate = newBill.paymentDate {
             let dateFormatter = DateFormatter()
@@ -227,15 +231,10 @@ open class BillRequest {
             guard dateFormatter.date(from: paymentDate) != nil else {
                 throw DateFormattingError.notADate
             }
-            billPostData.paymentDate = paymentDate
-        }
-        
-        if let recurringDate = newBill.recurringDate {
-            billPostData.recurringDate = recurringDate
         }
         
         do {
-            request.httpBody = try JSONEncoder().encode(billPostData)
+            request.httpBody = try JSONEncoder().encode(newBill)
         } catch let error as NSError {
             throw error
         }

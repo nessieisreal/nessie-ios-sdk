@@ -36,6 +36,12 @@ public struct CustomerPostData: Encodable {
     public var lastName: String
     public var address: Address
     
+    public init(firstName: String, lastName: String, address: Address) {
+        self.firstName = firstName
+        self.lastName = lastName
+        self.address = address
+    }
+    
     enum CodingKeys: String, CodingKey {
         case address
 
@@ -120,16 +126,14 @@ open class CustomerRequest {
         return customer
     }
     
-    open func postCustomer(_ newCustomer: Customer) async throws -> CustomerPostResponse? {
+    open func postCustomer(_ newCustomer: CustomerPostData) async throws -> CustomerPostResponse? {
         self.requestType = HTTPType.POST
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
-        let customerPostData = CustomerPostData(firstName: newCustomer.firstName, lastName: newCustomer.lastName, address: newCustomer.address)
-        
         do {
-            request.httpBody = try JSONEncoder().encode(customerPostData)
+            request.httpBody = try JSONEncoder().encode(newCustomer)
         } catch let error as NSError {
             throw error
         }

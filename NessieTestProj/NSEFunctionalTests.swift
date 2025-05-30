@@ -68,8 +68,8 @@ class AccountTests {
     func testPostAccount(customerId: String) async {
         do {
             let accountType = AccountType.Savings
-            let accountToCreate = Account(accountId: "", accountType:accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: customerId)
-            if let accountPostResponse = try await AccountRequest().postAccount(accountToCreate) {
+            let accountToCreate = AccountPostData(accountType: accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456")
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, accountToCreate) {
                 let message = accountPostResponse.message
                 let accountCreated = accountPostResponse.objectCreated
                 print("\(message): \(accountCreated)")
@@ -176,8 +176,9 @@ class ATMTests {
 class BillTests {
     let client = NSEClient.sharedInstance
     
-    var accountToAccess: Account = Account(accountId: "", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    var accountToAccess: AccountPostData = AccountPostData(accountType: .CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456")
     var accountToAccessId: String
+    let customerId = "57d0c20d1fd43e204dd48282"
     
     let dateFormatter = DateFormatter()
     
@@ -186,12 +187,12 @@ class BillTests {
         
         dateFormatter.dateFormat = "yyyy-MM-dd"
         
-        let accountToAccessResponse = try await AccountRequest().postAccount(accountToAccess)
+        let accountToAccessResponse = try await AccountRequest().postAccount(customerId, accountToAccess)
         accountToAccessId = accountToAccessResponse?.objectCreated?.accountId ?? ""
-        let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", paymentDate: nil, recurringDate: 1, upcomingPaymentDate: dateFormatter.string(from: Date()), paymentAmount: 123, accountId: accountToAccessId)
-        _ = try await BillRequest().postBill(billToCreate)
+        let billToCreate = BillPostData(status: .Pending, payee: "Andrew", nickname: "Nickname", paymentDate: nil, recurringDate: 1, paymentAmount: 123)
+        _ = try await BillRequest().postBill(accountToAccessId, billToCreate)
         await testGetAllBills()
-        _ = try await AccountRequest().deleteAccount(accountToAccess.accountId)
+        _ = try await AccountRequest().deleteAccount(accountToAccessId)
     }
     
     func testGetAllBills() async {
@@ -223,7 +224,7 @@ class BillTests {
     
     func testGetCustomerBills() async {
         do {
-            if let customerBills = try await BillRequest().getCustomerBills(accountToAccess.customerId) {
+            if let customerBills = try await BillRequest().getCustomerBills(customerId) {
                 if customerBills.count > 0 {
                     print(customerBills)
                     await self.testPostBill()
@@ -238,8 +239,8 @@ class BillTests {
     
     func testPostBill() async {
         do {
-            let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", paymentDate: dateFormatter.string(from: Date()), recurringDate: 1, upcomingPaymentDate: dateFormatter.string(from: Date()), paymentAmount: 123, accountId: accountToAccessId)
-            if let billPostResponse = try await BillRequest().postBill(billToCreate) {
+            let billToCreate = BillPostData(status: .Pending, payee: "Andrew", nickname: "Nickname", paymentDate: dateFormatter.string(from: Date()), recurringDate: 1, paymentAmount: 123)
+            if let billPostResponse = try await BillRequest().postBill(accountToAccessId, billToCreate) {
                 let message = billPostResponse.message
                 let billCreated = billPostResponse.objectCreated
                 print("\(message): \(billCreated)")
@@ -359,7 +360,7 @@ class CustomerTests {
     func testPostCustomer() async {
         do {
             let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
-            let customerToCreate = Customer(firstName: "Victor", lastName: "Lopez", address: address, customerId: "123")
+            let customerToCreate = CustomerPostData(firstName: "Andrew", lastName: "Dunetz", address: address)
             if let customerPostResponse = try await CustomerRequest().postCustomer(customerToCreate) {
                 let message = customerPostResponse.message
                 let customerCreated = customerPostResponse.objectCreated
@@ -463,13 +464,15 @@ class DepositsTests {
 
 class LoanTests {
     let client = NSEClient.sharedInstance
-    let account: Account = Account(accountId: "57d32a5ce63c5995587e85ec",
-                                   accountType:.CreditCard,
-                                   nickname: "Hola",
-                                   rewards: 10,
-                                   balance: 100,
-                                   accountNumber: "1234567890123456",
-                                   customerId: "57d0c20d1fd43e204dd48282")
+    let account: AccountPostData = AccountPostData(
+       accountType: .CreditCard,
+       nickname: "Hola",
+       rewards: 10,
+       balance: 100,
+       accountNumber: "1234567890123456"
+    )
+    let accountId = "57d32a5ce63c5995587e85ec"
+    let customerId = "57d0c20d1fd43e204dd48282"
     init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
@@ -492,7 +495,7 @@ class LoanTests {
     
     func testPostLoan() async {
         do {
-            if let accountPostResponse = try await AccountRequest().postAccount(account) {
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, account) {
                 let accountId = accountPostResponse.objectCreated?.accountId ?? ""
                 let loanToCreate = LoanPostData(type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, description: "A home loan for the ages")
                 if let loanPostResponse = try await LoanRequest().postLoan(accountId, loanToCreate) {
@@ -553,13 +556,15 @@ class PurchasesTests {
         await testGetAllPurchasesFromAccount()
     }
     
-    var account: Account = Account(accountId: "5cf88b096759394351beee67",
-                                   accountType:.CreditCard,
-                                   nickname: "Hola",
-                                   rewards: 10,
-                                   balance: 100,
-                                   accountNumber: "1234567890123456",
-                                   customerId: "57d0c20d1fd43e204dd48282")
+    var account: AccountPostData = AccountPostData(
+       accountType: .CreditCard,
+       nickname: "Hola",
+       rewards: 10,
+       balance: 100,
+       accountNumber: "1234567890123456"
+    )
+    let accountId = "5cf88b096759394351beee67"
+    let customerId = "57d0c20d1fd43e204dd48282"
     let merchant: Merchant = Merchant(merchantId: "57cf75cea73e494d8675ec49",
                                       name: "Best Productions", creationDate: "2025-05-09",
                                       category: "Production",
@@ -598,7 +603,7 @@ class PurchasesTests {
     
     func testGetAllPurchasesFromAccount() async {
         do {
-            if let purchases = try await PurchaseRequest().getPurchasesFromAccountId(account.accountId) {
+            if let purchases = try await PurchaseRequest().getPurchasesFromAccountId(accountId) {
                 if purchases.count > 0 {
                     let purchase = purchases[0]
                     print(purchases)
@@ -615,7 +620,7 @@ class PurchasesTests {
     
     func testGetAllPurchasesFromMerchantAndAccount() async {
         do {
-            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: account.accountId) {
+            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: accountId) {
                 if purchases.count > 0 {
                     print(purchases)
                 } else {
@@ -629,7 +634,7 @@ class PurchasesTests {
     
     func testPostPurchase() async {
         do {
-            if let accountPostResponse = try await AccountRequest().postAccount(account) {
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, account) {
                 let accountId = accountPostResponse.objectCreated?.accountId ?? ""
                 let purchaseToCreate = PurchasePostData(merchantId: "57cf75cea73e494d8675ec49", medium: .Balance, amount: 100)
                 if let purchasePostResponse = try await PurchaseRequest().postPurchase(accountId: accountId, purchaseToCreate) {
@@ -646,7 +651,7 @@ class PurchasesTests {
     
     func testPutPurchase(purchaseId: String) async {
         do {
-            let purchaseToUpdate = PurchasePutData(payerId: account.accountId, medium: .Balance, amount: 25)
+            let purchaseToUpdate = PurchasePutData(payerId: accountId, medium: .Balance, amount: 25)
             if let purchasePutResponse = try await PurchaseRequest().putPurchase(purchaseId, purchaseToUpdate) {
                 let message = purchasePutResponse.message
                 print("\(message)")

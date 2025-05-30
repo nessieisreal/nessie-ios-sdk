@@ -53,6 +53,14 @@ public struct AccountPostData: Codable {
     public var balance: Int
     public var accountNumber: String?
     
+    public init(accountType: AccountType, nickname: String, rewards: Int, balance: Int, accountNumber: String? = nil) {
+        self.accountType = accountType
+        self.nickname = nickname
+        self.rewards = rewards
+        self.balance = balance
+        self.accountNumber = accountNumber
+    }
+    
     enum CodingKeys: String, CodingKey {
         case nickname, rewards, balance
         case accountType = "type"
@@ -157,20 +165,15 @@ open class AccountRequest {
         return customerAccounts
     }
 
-    open func postAccount(_ newAccount: Account) async throws -> AccountPostResponse? {
+    open func postAccount(_ customerId: String, _ newAccount: AccountPostData) async throws -> AccountPostResponse? {
         self.requestType = HTTPType.POST
-        self.customerId = newAccount.customerId
+        self.customerId = customerId
         
         let nseClient = NSEClient.sharedInstance
         var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        var accountPostData = AccountPostData(accountType: newAccount.accountType, nickname: newAccount.nickname, rewards: newAccount.rewards, balance: newAccount.balance)
-        
-        if let accountNumber = newAccount.accountNumber {
-            accountPostData.accountNumber = accountNumber
-        }
         
         do {
-            request.httpBody = try JSONEncoder().encode(accountPostData)
+            request.httpBody = try JSONEncoder().encode(newAccount)
         } catch let error as NSError {
             throw error
         }
