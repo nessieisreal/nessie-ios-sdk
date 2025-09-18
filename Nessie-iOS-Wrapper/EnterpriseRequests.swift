@@ -26,45 +26,37 @@ extension Enterprise {
     }
 }
 
+public struct EnterpriseAccountResponse: Decodable {
+    public var results: [Account]
+}
+
 public struct EnterpriseAccountRequest: Enterprise {
     var id: String? = nil
     var urlName: String = "accounts"
     
     public init () {}
     
-    public func getAccounts(_ completion:@escaping (_ accountsArray: Array<Account>?, _ error: NSError?) -> Void) {
+    public func getAccounts() async throws -> EnterpriseAccountResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseAccountResponse = try JSONDecoder().decode(EnterpriseAccountResponse.self, from: data)
+        return enterpriseAccountResponse
     }
     
-    public mutating func getAccount(_ accountId: String, completion: @escaping (_ customer: Account?, _ error: NSError?) -> Void) {
+    public mutating func getAccount(_ accountId: String) async throws -> Account? {
         self.id = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Account>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let account = try JSONDecoder().decode(Account.self, from: data)
+        return account
     }
+}
+
+public struct EnterpriseBillResponse: Decodable {
+    public var results: [Bill]
 }
 
 public struct EnterpriseBillRequest: Enterprise {
@@ -73,39 +65,27 @@ public struct EnterpriseBillRequest: Enterprise {
     
     public init () {}
     
-    public func getBills(_ completion:@escaping (_ billsArray: Array<Bill>?, _ error: NSError?) -> Void) {
+    public func getBills() async throws -> EnterpriseBillResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseBillResponse = try JSONDecoder().decode(EnterpriseBillResponse.self, from: data)
+        return enterpriseBillResponse
     }
     
-    public mutating func getBill(_ bilId: String, completion: @escaping (_ customer: Bill?, _ error: NSError?) -> Void) {
+    public mutating func getBill(_ bilId: String) async throws -> Bill? {
         self.id = bilId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Bill>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let bill = try JSONDecoder().decode(Bill.self, from: data)
+        return bill
     }
+}
+
+public struct EnterpriseCustomerResponse: Decodable {
+    public var results: [Customer]
 }
 
 public struct EnterpriseCustomerRequest: Enterprise {
@@ -114,39 +94,27 @@ public struct EnterpriseCustomerRequest: Enterprise {
     
     public init () {}
     
-    public func getCustomers(_ completion:@escaping (_ customersArray: Array<Customer>?, _ error: NSError?) -> Void) {
+    public func getCustomers() async throws -> EnterpriseCustomerResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseCustomerRequest = try JSONDecoder().decode(EnterpriseCustomerResponse.self, from: data)
+        return enterpriseCustomerRequest
     }
     
-    public mutating func getCustomer(_ bilId: String, completion: @escaping (_ customer: Customer?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getCustomer(_ customerId: String) async throws -> Customer? {
+        self.id = customerId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Customer>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let customer = try JSONDecoder().decode(Customer.self, from: data)
+        return customer
     }
+}
+
+public struct EnterpriseDepositResponse: Decodable {
+    public var results: [Deposit]
 }
 
 public struct EnterpriseDepositRequest: Enterprise {
@@ -155,39 +123,27 @@ public struct EnterpriseDepositRequest: Enterprise {
     
     public init () {}
     
-    public func getDeposits(_ completion:@escaping (_ depositsArray: Array<Deposit>?, _ error: NSError?) -> Void) {
+    public func getDeposits() async throws -> EnterpriseDepositResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseDepositRequest = try JSONDecoder().decode(EnterpriseDepositResponse.self, from: data)
+        return enterpriseDepositRequest
     }
     
-    public mutating func getDeposit(_ bilId: String, completion: @escaping (_ customer: Deposit?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getDeposit(_ depositId: String) async throws -> Deposit? {
+        self.id = depositId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Deposit>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let deposit = try JSONDecoder().decode(Deposit.self, from: data)
+        return deposit
     }
+}
+
+public struct EnterpriseMerchantResponse: Decodable {
+    public var results: [Merchant]
 }
 
 public struct EnterpriseMerchantRequest: Enterprise {
@@ -196,39 +152,27 @@ public struct EnterpriseMerchantRequest: Enterprise {
     
     public init () {}
     
-    public func getMerchants(_ completion:@escaping (_ merchantsArray: Array<Merchant>?, _ error: NSError?) -> Void) {
+    public func getMerchants() async throws -> EnterpriseMerchantResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseMerchantResponse = try JSONDecoder().decode(EnterpriseMerchantResponse.self, from: data)
+        return enterpriseMerchantResponse
     }
     
-    public mutating func getMerchant(_ bilId: String, completion: @escaping (_ customer: Merchant?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getMerchant(_ merchantId: String) async throws -> Merchant? {
+        self.id = merchantId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Merchant>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let merchant = try JSONDecoder().decode(Merchant.self, from: data)
+        return merchant
     }
+}
+
+public struct EnterpriseTransferResponse: Decodable {
+    public var results: [Transfer]
 }
 
 public struct EnterpriseTransferRequest: Enterprise {
@@ -237,39 +181,27 @@ public struct EnterpriseTransferRequest: Enterprise {
     
     public init () {}
     
-    public func getTransfers(_ completion:@escaping (_ transfersArray: Array<Transfer>?, _ error: NSError?) -> Void) {
+    public func getTransfers() async throws -> EnterpriseTransferResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseTransferResponse = try JSONDecoder().decode(EnterpriseTransferResponse.self, from: data)
+        return enterpriseTransferResponse
     }
     
-    public mutating func getTransfer(_ bilId: String, completion: @escaping (_ customer: Transfer?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getTransfer(_ transferId: String) async throws -> Transfer? {
+        self.id = transferId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Transfer>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let transfer = try JSONDecoder().decode(Transfer.self, from: data)
+        return transfer
     }
+}
+
+public struct EnterpriseWithdrawalResponse: Decodable {
+    public var results: [Withdrawal]
 }
 
 public struct EnterpriseWithdrawalRequest: Enterprise {
@@ -278,37 +210,21 @@ public struct EnterpriseWithdrawalRequest: Enterprise {
     
     public init () {}
     
-    public func getWithdrawals(_ completion:@escaping (_ withdrawalsArray: Array<Withdrawal>?, _ error: NSError?) -> Void) {
+    public func getWithdrawals() async throws -> EnterpriseWithdrawalResponse? {
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                guard let data = data else {
-                    completion(nil, genericError)
-                    return
-                }
-                let json = JSON(data: data)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let enterpriseWithdrawalResponse = try JSONDecoder().decode(EnterpriseWithdrawalResponse.self, from: data)
+        return enterpriseWithdrawalResponse
     }
     
-    public mutating func getWithdrawal(_ bilId: String, completion: @escaping (_ customer: Withdrawal?, _ error: NSError?) -> Void) {
-        self.id = bilId
+    public mutating func getWithdrawal(_ withdrawalId: String) async throws -> Withdrawal? {
+        self.id = withdrawalId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: .GET)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawal = try JSONDecoder().decode(Withdrawal.self, from: data)
+        return withdrawal
     }
 }

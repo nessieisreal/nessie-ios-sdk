@@ -9,38 +9,75 @@
 import Foundation
 import SwiftyJSON
 
-open class Withdrawal: JsonParser {
+public struct Withdrawal: Decodable {
     public var withdrawalId: String
     public var type: TransferType
-    public var transactionDate: Date?
+    public var transactionDate: String?
     public var status: TransferStatus
     public var payerId: String
     public var medium: TransactionMedium
     public var amount: Double
     public var description: String?
     
-    public init(withdrawalId: String, type: TransferType, transactionDate: Date?, status: TransferStatus, medium: TransactionMedium, payerId: String, amount: Double, description: String?) {
-        self.withdrawalId = withdrawalId
-        self.type = type
-        self.transactionDate = transactionDate
-        self.status = status
+    enum CodingKeys: String, CodingKey {
+        case type, medium, status, amount, description
+
+        case withdrawalId = "_id"
+        case transactionDate = "transaction_date"
+        case payerId = "payer_id"
+    }
+}
+
+public struct WithdrawalPostData: Encodable {
+    public var medium: TransactionMedium
+    public var transactionDate: String?
+    public var status: TransferStatus?
+    public var amount: Double
+    public var description: String?
+    
+    public init(medium: TransactionMedium, transactionDate: String? = nil, amount: Double, status: TransferStatus? = nil, description: String? = nil) {
         self.medium = medium
-        self.payerId = payerId
+        self.transactionDate = transactionDate
         self.amount = amount
+        self.status = status
         self.description = description
     }
     
-    public required init(data: JSON) {
-        self.withdrawalId = data["_id"].string ?? ""
-        self.type = TransferType(rawValue: data["type"].string ?? "") ?? .Unknown
-        self.status = TransferStatus(rawValue: data["status"].string ?? "") ?? .Unknown
-        self.transactionDate = data["transaction_date"].string?.stringToDate()
-        self.medium = TransactionMedium(rawValue: data["medium"].string ?? "") ?? .Unknown
-        self.payerId = data["payer_id"].string ?? ""
-        self.amount = data["amount"].double ?? 0
-        self.description = data["description"].string ?? ""
+    enum CodingKeys: String, CodingKey {
+        case medium, status, amount, description
+
+        case transactionDate = "transaction_date"
     }
+}
+
+public struct WithdrawalPostResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+    public var objectCreated: Withdrawal?
+}
+
+public struct WithdrawalPutData: Encodable {
+    public var medium: TransactionMedium?
+    public var amount: Double?
+    public var description: String?
     
+    public init(medium: TransactionMedium? = nil, amount: Double? = nil, description: String? = nil) {
+        self.medium = medium
+        self.amount = amount
+        self.description = description
+    }
+}
+
+public struct WithdrawalPutResponse: Decodable {
+    public var code: Int?
+    public var message: String?
+    public var culprit: [String]?
+}
+
+public struct WithdrawalDeleteResponse: Decodable {
+    public var code: Int?
+    public var message: String?
 }
 
 open class WithdrawalRequest {
@@ -76,136 +113,88 @@ open class WithdrawalRequest {
     // MARK: API Requests
     
     // GET /accounts/{id}/withdrawals
-    open func getWithdrawalsFromAccountId(_ accountId: String, completion: @escaping (_ withdrawalArray: Array<Withdrawal>?, _ error: NSError?) -> Void) {
+    open func getWithdrawalsFromAccountId(_ accountId: String) async throws -> [Withdrawal]? {
         requestType = HTTPType.GET
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.requestArray, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawals = try JSONDecoder().decode([Withdrawal].self, from: data)
+        return withdrawals
     }
     
     // GET /withdrawals/{id}
-    open func getWithdrawal(_ withdrawalId: String, completion: @escaping (_ withdrawal: Withdrawal?, _ error: NSError?) -> Void) {
+    open func getWithdrawal(_ withdrawalId: String) async throws -> Withdrawal? {
         requestType = HTTPType.GET
         self.withdrawalId = withdrawalId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: requestType)
-        
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response.object, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawal = try JSONDecoder().decode(Withdrawal.self, from: data)
+        return withdrawal
     }
     
     // POST /accounts/{id}/withdrawals
-    open func postWithdrawal(_ newWithdrawal: Withdrawal, accountId: String, completion: @escaping (_ withdrawalResponse: BaseResponse<Withdrawal>?, _ error: NSError?) -> Void) {
+    open func postWithdrawal(_ accountId: String, _ newWithdrawal: WithdrawalPostData) async throws -> WithdrawalPostResponse? {
         requestType = HTTPType.POST
         self.accountId = accountId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
-        // construct request body
-        // required values: medium, amount
-        var params: Dictionary<String, AnyObject> =
-            ["medium": newWithdrawal.medium.rawValue as AnyObject,
-             "amount": newWithdrawal.amount as AnyObject]
-        
-        // optional values
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-dd-MM"
-        if let transactionDate = newWithdrawal.transactionDate as Date? {
-            let dateString = dateFormatter.string(from: transactionDate)
-            params["transaction_date"] = dateString as AnyObject?
-        }
-        
-        if let description = newWithdrawal.description {
-            params["description"] = description as AnyObject?
-        }
-        
-        // make request
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
-        } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
-        }
-        
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response, nil)
+        if let transactionDate = newWithdrawal.transactionDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+
+            guard dateFormatter.date(from: transactionDate) != nil else {
+                throw DateFormattingError.notADate
             }
-        })
+        }
+        
+        do {
+            request.httpBody = try JSONEncoder().encode(newWithdrawal)
+        } catch let error as NSError {
+            throw error
+        }
+        
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawalPostResponse = try JSONDecoder().decode(WithdrawalPostResponse.self, from: data)
+        return withdrawalPostResponse
     }
     
     // PUT /withdrawals/{id}
-    open func putWithdrawal(_ updatedWithdrawal: Withdrawal, completion: @escaping (_ withdrawalResponse: BaseResponse<Withdrawal>?, _ error: NSError?) -> Void) {
+    open func putWithdrawal(_ withdrawalId: String, _ updatedWithdrawal: WithdrawalPutData) async throws -> WithdrawalPutResponse? {
         requestType = HTTPType.PUT
-        withdrawalId = updatedWithdrawal.withdrawalId
+        self.withdrawalId = withdrawalId
         
         let nseClient = NSEClient.sharedInstance
-        let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        
-        var params: Dictionary<String, AnyObject> =
-            ["medium": updatedWithdrawal.medium.rawValue as AnyObject,
-             "amount": updatedWithdrawal.amount as AnyObject]
-        
-        if let description = updatedWithdrawal.description {
-            params["description"] = description as AnyObject?
-        }
+        var request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
         
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
+            request.httpBody = try JSONEncoder().encode(updatedWithdrawal)
         } catch let error as NSError {
-            request.httpBody = nil
-            completion(nil, error)
+            throw error
         }
         
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let json = JSON(data: data!)
-                let response = BaseResponse<Withdrawal>(data: json)
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        let withdrawalPutResponse = try JSONDecoder().decode(WithdrawalPutResponse.self, from: data)
+        return withdrawalPutResponse
     }
     
     // DELETE /withdrawals/{id}
-    open func deleteWithdrawal(_ withdrawalId: String, completion: @escaping (_ withdrawalResponse: BaseResponse<Withdrawal>?, _ error: NSError?) -> Void) {
+    open func deleteWithdrawal(_ withdrawalId: String) async throws -> WithdrawalDeleteResponse? {
         requestType = HTTPType.DELETE
         self.withdrawalId = withdrawalId
         
         let nseClient = NSEClient.sharedInstance
         let request = nseClient.makeRequest(buildRequestUrl(), requestType: self.requestType)
-        nseClient.loadDataFromURL(request, completion: {(data, error) -> Void in
-            if (error != nil) {
-                completion(nil, error)
-            } else {
-                let response = BaseResponse<Withdrawal>(requestArray: nil, object: nil, message: "Withdrawal deleted")
-                completion(response, nil)
-            }
-        })
+        guard let data = try await nseClient.loadDataFromURL(request) else { return nil }
+        guard !data.isEmpty else {
+            return WithdrawalDeleteResponse(code: 204, message: "Withdrawal Deleted")
+        }
+        let withdrawalDeleteResponse = try JSONDecoder().decode(WithdrawalDeleteResponse.self, from: data)
+        return withdrawalDeleteResponse
     }
 }

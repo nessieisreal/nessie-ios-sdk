@@ -13,150 +13,162 @@ import NessieFmwk
 class AccountTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetAccounts()
+        await self.testGetAccounts()
     }
     
-    func testGetAccounts() {
-        let accountType = AccountType.Savings
-        
-        AccountRequest().getAccounts(accountType, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    if array.count > 0 {
-                        let account = array[0] as Account?
-                        self.testGetAccount(accountId: account!.accountId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetAccounts() async {
+        do {
+            let accountType = AccountType.Savings
+            
+            if let accounts = try await AccountRequest().getAccounts(accountType) {
+                if accounts.count > 0 {
+                    let account = accounts[0]
+                    await self.testGetAccount(accountId: account.accountId)
+                    print(accounts)
+                } else {
+                    print("No accounts found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAccount(accountId: String) {
-        AccountRequest().getAccount(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let account = response as Account? {
-                    print(account)
-                    self.testGetCustomerAccounts(customerId: account.customerId)
+    func testGetAccount(accountId: String) async {
+        do {
+            if let account = try await AccountRequest().getAccount(accountId) {
+                print(account)
+                await self.testGetCustomerAccounts(customerId: account.customerId)
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetCustomerAccounts(customerId: String) async {
+        do {
+            if let accounts = try await AccountRequest().getCustomerAccounts(customerId) {
+                if accounts.count > 0 {
+                    let account = accounts[0]
+                    await self.testPostAccount(customerId: account.customerId)
+                    await self.testPutAccount(accountId: account.accountId, nickname: "New nickname", accountNumber: "0987654321123456")
+                    await self.testDeleteAccount(accountId: account.accountId)
+                    print(accounts)
+                } else {
+                    print("No accounts found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomerAccounts(customerId: String) {
-        AccountRequest().getCustomerAccounts(customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    print(array)
-                    let account = array[0] as Account?
-                    self.testPostAccount(customerId: account!.customerId)
-                    self.testPutAccount(accountId: account!.accountId, nickname: "New nickname", accountNumber: "0987654321123456")
-                    self.testDeleteAccount(accountId: account!.accountId)
-                }
-            }
-        })
-    }
-    
-    func testPostAccount(customerId: String) {
-        let accountType = AccountType.Savings
-        let accountToCreate = Account(accountId: "", accountType:accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: customerId)
-        AccountRequest().postAccount(accountToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
+    func testPostAccount(customerId: String) async {
+        do {
+            let accountType = AccountType.Savings
+            let accountToCreate = AccountPostData(accountType: accountType, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456")
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, accountToCreate) {
+                let message = accountPostResponse.message
+                let accountCreated = accountPostResponse.objectCreated
                 print("\(message): \(accountCreated)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutAccount(accountId: String, nickname: String, accountNumber: String?) {
-        AccountRequest().putAccount(accountId, nickname: nickname, accountNumber: accountNumber, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutAccount(accountId: String, nickname: String, accountNumber: String) async {
+        do {
+            if let accountPutResponse = try await AccountRequest().putAccount(accountId, nickname: nickname, accountNumber: accountNumber) {
+                let message = accountPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteAccount(accountId: String) {
-        AccountRequest().deleteAccount(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Account>?
-                if let message = accountResponse?.message {
-                    print(message)
-                }
+    func testDeleteAccount(accountId: String) async {
+        do {
+            if let accountDeleteResponse = try await AccountRequest().deleteAccount(accountId) {
+                let message = accountDeleteResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class ATMTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        self.testGetAtms()
+        await self.testGetAtms()
     }
     
-    func testGetAtms() {
-        let latitude = 38.9283 as Float
-        let longitude = -77.1753 as Float
-        let radius = "1" as String
-        
-        ATMRequest().getAtms(latitude, longitude: longitude, radius: radius, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
-                
-                self.testGetNextAtms(nextString: array!.nextPage)
+    func testGetAtms() async {
+        do {
+            let latitude = 38.9283 as Float
+            let longitude = -77.1753 as Float
+            let radius = "1" as String
+            
+            if let atmResponse = try await ATMRequest().getAtms(latitude, longitude: longitude, radius: radius) {
+                if atmResponse.data.count > 0 {
+                    let atm = atmResponse.data[0]
+                    await self.testGetAtm(atmId: atm.atmId)
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
+                await self.testGetNextAtms(nextString: atmResponse.paging.next)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetNextAtms(nextString: String) {
-        ATMRequest().getNextAtms(nextString, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
-                
-                self.testGetPreviousAtms(previousString: array!.previousPage)
+    func testGetNextAtms(nextString: String) async {
+        do {
+            if let atmResponse = try await ATMRequest().getNextAtms(nextString) {
+                if atmResponse.data.count > 0 {
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
+                await self.testGetPreviousAtms(previousString: atmResponse.paging.previous)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetPreviousAtms(previousString: String) {
-        ATMRequest().getPreviousAtms(previousString, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let array = response as AtmResponse?
-                print(array!.requestArray)
+    func testGetPreviousAtms(previousString: String) async {
+        do {
+            if let atmResponse = try await ATMRequest().getPreviousAtms(previousString) {
+                if atmResponse.data.count > 0 {
+                    print(atmResponse.data)
+                } else {
+                    print("No atms found")
+                }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAtm(atmId: String) async {
+        do {
+            if let atm = try await ATMRequest().getAtm(atmId) {
+                print(atm)
+            }
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
 }
@@ -164,401 +176,373 @@ class ATMTests {
 class BillTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    var accountToAccess: AccountPostData = AccountPostData(accountType: .CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456")
+    var accountToAccessId: String
+    let customerId = "57d0c20d1fd43e204dd48282"
+    
+    let dateFormatter = DateFormatter()
+    
+    init() async throws {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllBills()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        let accountToAccessResponse = try await AccountRequest().postAccount(customerId, accountToAccess)
+        accountToAccessId = accountToAccessResponse?.objectCreated?.accountId ?? ""
+        let billToCreate = BillPostData(status: .Pending, payee: "Andrew", nickname: "Nickname", paymentDate: nil, recurringDate: 1, paymentAmount: 123)
+        _ = try await BillRequest().postBill(accountToAccessId, billToCreate)
+        await testGetAllBills()
+        _ = try await AccountRequest().deleteAccount(accountToAccessId)
     }
     
-    var accountToAccess: Account = Account(accountId: "57d213d71fd43e204dd4841e", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
-    var accountToPay: Account = Account(accountId: "123", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "")
-    
-    func testGetAllBills() {
-        BillRequest().getAccountBills(accountToAccess.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        let bill = array[0]
-                        print(array)
-                        self.testGetBill(billId: bill.billId)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetAllBills() async {
+        do {
+            if let bills = try await BillRequest().getAccountBills(accountToAccessId) {
+                if bills.count > 0 {
+                    let bill = bills[0]
+                    print(bills)
+                    await self.testGetBill(billId: bill.billId)
+                } else {
+                    print("No bills found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetBill(billId: String) {
-        BillRequest().getBill(billId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let bill = response as Bill? {
-                    print(bill)
-                    self.testGetCustomerBills()
+    func testGetBill(billId: String) async {
+        do {
+            if let bill = try await BillRequest().getBill(billId) {
+                print(bill)
+                await self.testGetCustomerBills()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetCustomerBills() async {
+        do {
+            if let customerBills = try await BillRequest().getCustomerBills(customerId) {
+                if customerBills.count > 0 {
+                    print(customerBills)
+                    await self.testPostBill()
+                } else {
+                    print("No bills found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomerBills() {
-        BillRequest().getCustomerBills(accountToAccess.customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        print(array)
-                        self.testPostBill()
-                    } else {
-                        print("No accounts found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostBill() {
-        let billToCreate = Bill(status: .Pending, payee: "Victor", nickname: "Nickname", creationDate: Date(), paymentDate: nil, recurringDate: 1, upcomingPaymentDate: Date(), paymentAmount: 123, accountId: accountToAccess.accountId)
-        BillRequest().postBill(billToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
-                let billCreated = billResponse?.object
+    func testPostBill() async {
+        do {
+            let billToCreate = BillPostData(status: .Pending, payee: "Andrew", nickname: "Nickname", paymentDate: dateFormatter.string(from: Date()), recurringDate: 1, paymentAmount: 123)
+            if let billPostResponse = try await BillRequest().postBill(accountToAccessId, billToCreate) {
+                let message = billPostResponse.message
+                let billCreated = billPostResponse.objectCreated
                 print("\(message): \(billCreated)")
-                self.testPutBill(bill: billCreated!)
+                await self.testPutBill(billId: billCreated!.billId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutBill(bill: Bill) {
-        bill.payee = "Raul"
-        BillRequest().putBill(bill, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
+    func testPutBill(billId: String) async {
+        do {
+            let billToUpdate = BillPutData(status: BillStatus.Pending, payee: "Raul", nickname: "AwesomeName", recurringDate: 2, paymentAmount: 321)
+            if let billPutResponse = try await BillRequest().putBill(billId, billToUpdate) {
+                let message = billPutResponse.message
                 print("\(message)")
-                self.testDeleteBill(billId: bill.billId)
+                await self.testDeleteBill(billId: billId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteBill(billId: String) {
-        BillRequest().deleteBill(billId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let billResponse = response as BaseResponse<Bill>?
-                let message = billResponse?.message
+    func testDeleteBill(billId: String) async {
+        do {
+            if let billDeleteResponse = try await BillRequest().deleteBill(billId) {
+                let message = billDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class BranchTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetBranches()
+        await self.testGetBranches()
     }
     
-    func testGetBranches() {
-        BranchRequest().getBranches({(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Branch>? {
-                    if array.count > 0 {
-                        let branch = array[0] as Branch?
-                        self.testGetBranch(branchId: branch!.branchId)
-                        print(array)
-                    } else {
-                        print("No branches found")
-                    }
+    func testGetBranches() async {
+        do {
+            if let branches = try await BranchRequest().getBranches() {
+                if branches.count > 0 {
+                    let branch = branches[0]
+                    print(branches)
+                    await self.testGetBranch(branchId: branch.branchId)
+                } else {
+                    print("No branches found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetBranch(branchId: String) {
-        BranchRequest().getBranch(branchId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let branch = response as Branch? {
-                    print(branch)
-                }
+    func testGetBranch(branchId: String) async {
+        do {
+            if let branch = try await BranchRequest().getBranch(branchId) {
+                print(branch)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class CustomerTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        testGetCustomers()
+        await testGetCustomers()
     }
     
-    func testGetCustomers() {
-        CustomerRequest().getCustomers({(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Customer>? {
-                    if array.count > 0 {
-                        let customer = array[0] as Customer?
-                        self.testGetCustomer(customerId: customer!.customerId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetCustomers() async {
+        do {
+            if let customers = try await CustomerRequest().getCustomers() {
+                if customers.count > 0 {
+                    let customer = customers[0]
+                    print(customers)
+                    await self.testGetCustomer(customerId: customer.customerId)
+                } else {
+                    print("No customers found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomer(customerId: String) {
-        CustomerRequest().getCustomer(customerId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let customer = response as Customer? {
-                    print(customer)
-                    self.testGetCustomers(from: "57d20f881fd43e204dd48418")
-                }
+    func testGetCustomer(customerId: String) async {
+        do {
+            if let customer = try await CustomerRequest().getCustomer(customerId) {
+                print(customer)
+                await self.testGetCustomer(accountId: "5cf88f206759394351beee6b")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetCustomers(from accountId: String) {
-        CustomerRequest().getCustomer(accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let customer = response as Customer? {
-                    print(customer)
-                    self.testPostCustomer()
-                }
+    func testGetCustomer(accountId: String) async  {
+        do {
+            if let customer = try await CustomerRequest().getCustomerFromAccountId(accountId) {
+                print(customer)
+                await self.testPostCustomer()
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostCustomer() {
-        let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
-        let customerToCreate = Customer(firstName: "Victor", lastName: "Lopez", address: address, customerId: "asd")
-        CustomerRequest().postCustomer(customerToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let customerResponse = response as BaseResponse<Customer>?
-                let message = customerResponse?.message
-                let customerCreated = customerResponse?.object
+    func testPostCustomer() async {
+        do {
+            let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
+            let customerToCreate = CustomerPostData(firstName: "Andrew", lastName: "Dunetz", address: address)
+            if let customerPostResponse = try await CustomerRequest().postCustomer(customerToCreate) {
+                let message = customerPostResponse.message
+                let customerCreated = customerPostResponse.objectCreated
                 print("\(message): \(customerCreated)")
-                self.testPutCustomer(customerToBeModified: customerCreated!)
+                await self.testPutCustomer(customerId: customerCreated!.customerId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutCustomer(customerToBeModified: Customer) {
-        customerToBeModified.firstName = "Raul"
-        CustomerRequest().putCustomer(customerToBeModified, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Customer>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutCustomer(customerId: String) async {
+        do {
+            let address = Address(streetName: "Street", streetNumber: "2", city: "City", state: "MD", zipCode: "54321")
+            let customerToUpdate = CustomerPutData(address: address)
+            if let customerPutResponse = try await CustomerRequest().putCustomer(customerId, customerToUpdate) {
+                let message = customerPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class DepositsTests {
     let client = NSEClient.sharedInstance
+    let accountId = "59df8251ceb8abe24251c1e6"
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllDepositsFromAccount()
+        await testGetAllDepositsFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d213d71fd43e204dd4841e", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    func testGetDeposit(depositId: String) async {
+        do {
+            if let deposit = try await DepositRequest().getDeposit(depositId) {
+                print(deposit)
+                await self.testPostDeposit()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
     
-    func testGetDeposit(depositId: String) {
-        DepositRequest().getDeposit(depositId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let deposit = response as Deposit? {
-                    print(deposit)
-                    self.testPostDeposit()
+    func testGetAllDepositsFromAccount() async {
+        do {
+            if let deposits = try await DepositRequest().getDepositsFromAccountId(accountId) {
+                if deposits.count > 0 {
+                    let deposit = deposits[0]
+                    print(deposits)
+                    await self.testGetDeposit(depositId: deposit.depositId)
+                } else {
+                    print("No deposits found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllDepositsFromAccount() {
-        DepositRequest().getDepositsFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Deposit>? {
-                    if array.count > 0 {
-                        let deposit = array[0]
-                        print(array)
-                        self.testGetDeposit(depositId: deposit.depositId)
-                    } else {
-                        print("No deposits found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostDeposit() {
-        let depositToCreate = Deposit(depositId: "", status: .Pending, medium: .Balance, payeeId: "asd", amount: 1, type: "merchant", transactionDate: Date(), description: "Description")
-        DepositRequest().postDeposit(depositToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let depositResponse = response as BaseResponse<Deposit>?
-                let message = depositResponse?.message
-                let depositCreated = depositResponse?.object
+    func testPostDeposit() async {
+        do {
+            let depositToCreate = DepositPostData(medium: .Balance, amount: 20)
+            if let depositPostResponse = try await DepositRequest().postDeposit(accountId, depositToCreate) {
+                let message = depositPostResponse.message
+                let depositCreated = depositPostResponse.objectCreated
                 print("\(message): \(depositCreated)")
-                self.testPutDeposit(deposit: depositCreated!)
+                await self.testPutDeposit(depositId: depositCreated!.depositId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutDeposit(deposit: Deposit) {
-        deposit.medium = .Rewards
-        DepositRequest().putDeposit(deposit, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let depositResponse = response as BaseResponse<Deposit>?
-                let message = depositResponse?.message
+    func testPutDeposit(depositId: String) async {
+        do {
+            let depositToUpdate = DepositPutData(medium: .Balance, amount: 100)
+            if let depositPutResponse = try await DepositRequest().putDeposit(depositId, depositToUpdate) {
+                let message = depositPutResponse.message
                 print("\(message)")
-                self.testDeleteDeposit(depositId: deposit.depositId)
+                await self.testDeleteDeposit(depositId: depositId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteDeposit(depositId: String) {
-        DepositRequest().deleteDeposit(depositId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let DepositResponse = response as BaseResponse<Deposit>?
-                let message = DepositResponse?.message
+    func testDeleteDeposit(depositId: String) async {
+        do {
+            if let depositDeleteResponse = try await DepositRequest().deleteDeposit(depositId) {
+                let message = depositDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class LoanTests {
     let client = NSEClient.sharedInstance
-    let account: Account = Account(accountId: "57d32a5ce63c5995587e85ec",
-                                   accountType:.CreditCard,
-                                   nickname: "Hola",
-                                   rewards: 10,
-                                   balance: 100,
-                                   accountNumber: "1234567890123456",
-                                   customerId: "57d0c20d1fd43e204dd48282")
-    init() {
+    let account: AccountPostData = AccountPostData(
+       accountType: .CreditCard,
+       nickname: "Hola",
+       rewards: 10,
+       balance: 100,
+       accountNumber: "1234567890123456"
+    )
+    let accountId = "57d32a5ce63c5995587e85ec"
+    let customerId = "57d0c20d1fd43e204dd48282"
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testCreateLoan()
+        await testPostLoan()
     }
     
-    func testGetLoans(accountId: String) {
-        LoanRequest().getLoansFromAccountId(accountId) { (loans, error) in
-            if let error = error {
-                print(error)
-            }
-            if let loans = loans {
-                print("\(loans.count) loans")
-                for loan in loans {
-                    print(loan.description ?? "Amount: \(loan.amount), credit score: \(loan.creditScore)")
+    func testGetLoans(accountId: String) async {
+        do {
+            if let loans = try await LoanRequest().getLoansFromAccountId(accountId) {
+                if loans.count > 0 {
+                    print(loans)
+                } else {
+                    print("No loans found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testCreateLoan() {
-        AccountRequest().postAccount(account) { (response, error0) in
-            if let error = error0 {
-                print(error)
+    func testPostLoan() async {
+        do {
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, account) {
+                let accountId = accountPostResponse.objectCreated?.accountId ?? ""
+                let loanToCreate = LoanPostData(type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, description: "A home loan for the ages")
+                if let loanPostResponse = try await LoanRequest().postLoan(accountId, loanToCreate) {
+                    let message = loanPostResponse.message
+                    let loanCreated = loanPostResponse.objectCreated
+                    print("\(message): \(loanCreated)")
+                    await self.testGetLoans(accountId: accountId)
+                    await self.testGetLoan(loanId: loanCreated!.loanId)
+                    await self.testPutLoan(loanId: loanCreated!.loanId)
+                }
             }
-            else {
-                let accountId = response?.object?.accountId ?? ""
-                let loan = Loan(loanId: "abcd1234", type: .home, status: .approved, creditScore: 800, monthlyPayment: 50, amount: 100, creationDate: Date(), description: "A home loan for the ages")
-                LoanRequest().postLoan(loan, accountId: accountId, completion: { (loanResponse, error) in
-                    if let error = error {
-                        print(error)
-                    }
-                    else if let loanResponse = loanResponse {
-                        let message = loanResponse.message
-                        let loanCreated = loanResponse.object
-                        print("\(message): \(loanCreated)")
-                        
-//                        self.testGetLoans(accountId: accountId)
-//                        self.testGetLoan(loanId: loan.loanId)
-//                        self.testUpdateLoan(loan: loanCreated!)
-                        self.testDeleteLoan(loanId: loanCreated!.loanId)
-                    }
-                })
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetLoan(loanId: String) {
-        LoanRequest().getLoan(loanId) { (loan, error) in
-            if let error = error {
-                print(error)
+    func testGetLoan(loanId: String) async {
+        do {
+            if let loan = try await LoanRequest().getLoan(loanId) {
+                print(loan)
             }
-            if let loan = loan {
-                print("Amount: \(loan.amount), credit score: \(loan.creditScore)")
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testUpdateLoan(loan: Loan) {
-        let originalLoanId = loan.loanId
-        loan.creditScore = 600
-        LoanRequest().putLoan(loan) { (loanResponse, error) in
-            if let error = error {
-                print(error)
+    func testPutLoan(loanId: String) async {
+        do {
+            let loanToUpdate = LoanPutData(type: .auto, status: .approved, monthlyPayment: 400)
+            if let loanPutResponse = try await LoanRequest().putLoan(loanId, loanToUpdate) {
+                let message = loanPutResponse.message
+                print("\(message)")
+                await self.testDeleteLoan(loanId: loanId)
             }
-            if let loanResponse = loanResponse, let loan = loanResponse.object {
-                print(loanResponse.message!)
-                self.testGetLoan(loanId: originalLoanId)
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testDeleteLoan(loanId: String) {
-        LoanRequest().deleteLoan(loanId) { (loanResponse, error) in
-            if let error = error {
-                print(error)
+    func testDeleteLoan(loanId: String) async {
+        do {
+            if let loanDeleteResponse = try await LoanRequest().deleteLoan(loanId) {
+                let message = loanDeleteResponse.message
+                print("\(message)")
             }
-            if let loanResponse = loanResponse {
-                print(loanResponse.message!)
-                self.testGetLoan(loanId: loanId)
-            }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
@@ -566,22 +550,24 @@ class LoanTests {
 class PurchasesTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllPurchasesFromAccount()
+        await testGetAllPurchasesFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d32a5ce63c5995587e85ec",
-                                   accountType:.CreditCard,
-                                   nickname: "Hola",
-                                   rewards: 10,
-                                   balance: 100,
-                                   accountNumber: "1234567890123456",
-                                   customerId: "57d0c20d1fd43e204dd48282")
+    var account: AccountPostData = AccountPostData(
+       accountType: .CreditCard,
+       nickname: "Hola",
+       rewards: 10,
+       balance: 100,
+       accountNumber: "1234567890123456"
+    )
+    let accountId = "5cf88b096759394351beee67"
+    let customerId = "57d0c20d1fd43e204dd48282"
     let merchant: Merchant = Merchant(merchantId: "57cf75cea73e494d8675ec49",
-                                      name: "Best Productions",
-                                      category: ["Production"],
+                                      name: "Best Productions", creationDate: "2025-05-09",
+                                      category: "Production",
                                       address: Address(streetName: "Lafayette St.",
                                                        streetNumber: "5901",
                                                        city: "Brooklyn",
@@ -589,663 +575,570 @@ class PurchasesTests {
                                                        zipCode: "07009"),
                                       geocode: Geocode(lng: -1, lat: 33))
     
-    func testGetPurchase(PurchaseId: String) {
-        PurchaseRequest().getPurchase(PurchaseId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let purchase = response as Purchase? {
-                    print(purchase)
-                    self.testPostPurchase()
+    func testGetPurchase(purchaseId: String) async {
+        do {
+            if let purchase = try await PurchaseRequest().getPurchase(purchaseId) {
+                print(purchase)
+                await self.testPostPurchase()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllPurchasesFromMerchant() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantId(merchant.merchantId) {
+                if purchases.count > 0 {
+                    print(purchases)
+                } else {
+                    print("No purchases found")
                 }
             }
-        })
+            await self.testGetAllPurchasesFromMerchantAndAccount()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromMerchant() {
-        PurchaseRequest().getPurchasesFromMerchantId(merchant.merchantId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        print(array)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testGetAllPurchasesFromAccount() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromAccountId(accountId) {
+                if purchases.count > 0 {
+                    let purchase = purchases[0]
+                    print(purchases)
+                    await self.testGetPurchase(purchaseId: purchase.purchaseId)
+                } else {
+                    print("No purchases found")
                 }
             }
-            self.testGetAllPurchasesFromMerchantAndAccount()
-        })
+            await self.testGetAllPurchasesFromMerchantAndAccount()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromAccount() {
-        PurchaseRequest().getPurchasesFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        let purchase = array[0]
-                        print(array)
-                        self.testGetPurchase(PurchaseId: purchase.purchaseId)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testGetAllPurchasesFromMerchantAndAccount() async {
+        do {
+            if let purchases = try await PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: accountId) {
+                if purchases.count > 0 {
+                    print(purchases)
+                } else {
+                    print("No purchases found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllPurchasesFromMerchantAndAccount() {
-        PurchaseRequest().getPurchasesFromMerchantAndAccountIds(merchant.merchantId, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Purchase>? {
-                    if array.count > 0 {
-                        print(array)
-                    } else {
-                        print("No purchases found")
-                    }
+    func testPostPurchase() async {
+        do {
+            if let accountPostResponse = try await AccountRequest().postAccount(customerId, account) {
+                let accountId = accountPostResponse.objectCreated?.accountId ?? ""
+                let purchaseToCreate = PurchasePostData(merchantId: "57cf75cea73e494d8675ec49", medium: .Balance, amount: 100)
+                if let purchasePostResponse = try await PurchaseRequest().postPurchase(accountId: accountId, purchaseToCreate) {
+                    let message = purchasePostResponse.message
+                    let purchaseCreated = purchasePostResponse.objectCreated
+                    print("\(message): \(purchaseCreated)")
+                    await self.testPutPurchase(purchaseId: purchaseCreated!.purchaseId)
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostPurchase() {
-        let purchaseToCreate = Purchase(merchantId: "57cf75cea73e494d8675ec49", status: .Cancelled, medium: .Balance, payerId: account.accountId, amount: 4.5, type: "merchant", purchaseDate: Date(), description: "Description", purchaseId: "asd")
-        PurchaseRequest().postPurchase(purchaseToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let purchaseResponse = response as BaseResponse<Purchase>?
-                let message = purchaseResponse?.message
-                let purchaseCreated = purchaseResponse?.object
-                print("\(message): \(purchaseCreated)")
-                self.testPutPurchase(purchase: purchaseCreated!)
-            }
-        })
-    }
-    
-    func testPutPurchase(purchase: Purchase) {
-        purchase.medium = .Rewards
-        PurchaseRequest().putPurchase(purchase, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let purchaseResponse = response as BaseResponse<Purchase>?
-                let message = purchaseResponse?.message
+    func testPutPurchase(purchaseId: String) async {
+        do {
+            let purchaseToUpdate = PurchasePutData(payerId: accountId, medium: .Balance, amount: 25)
+            if let purchasePutResponse = try await PurchaseRequest().putPurchase(purchaseId, purchaseToUpdate) {
+                let message = purchasePutResponse.message
                 print("\(message)")
-                self.testDeletePurchase(purchaseId: purchase.purchaseId)
+                await self.testDeletePurchase(purchaseId: purchaseId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeletePurchase(purchaseId: String) {
-        PurchaseRequest().deletePurchase(purchaseId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let PurchaseResponse = response as BaseResponse<Purchase>?
-                let message = PurchaseResponse?.message
+    func testDeletePurchase(purchaseId: String) async {
+        do {
+            if let purchaseDeleteResponse = try await PurchaseRequest().deletePurchase(purchaseId) {
+                let message = purchaseDeleteResponse.message
                 print("\(message)")
-                self.testGetAllPurchasesFromMerchant()
+                await self.testGetAllPurchasesFromMerchant()
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class MerchantTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        testGetMerchants()
+        await testGetMerchants()
     }
     
-    func testGetMerchants() {
-        MerchantRequest().getMerchants(completion: {(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Merchant>? {
-                    if array.count > 0 {
-                        let merchant = array[0] as Merchant?
-                        self.testGetMerchant(merchantId: merchant!.merchantId)
-                        print(array)
-                    } else {
-                        print("No merchants found")
-                    }
+    func testGetMerchants() async {
+        do {
+            if let merchants = try await MerchantRequest().getMerchants() {
+                if merchants.count > 0 {
+                    let merchant = merchants[0]
+                    await self.testGetMerchant(merchantId: merchant.merchantId)
+                    print(merchants)
+                } else {
+                    print("No merchants found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetMerchant(merchantId: String) {
-        MerchantRequest().getMerchant(merchantId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let merchant = response as Merchant? {
-                    print(merchant)
-                }
+    func testGetMerchant(merchantId: String) async {
+        do {
+            if let merchant = try await MerchantRequest().getMerchant(merchantId) {
+                print(merchant)
             }
-            self.testPostMerchant()
-        })
+            await self.testPostMerchant()
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPostMerchant() {
-        let address = Address(streetName: "Street", streetNumber: "1", city: "City", state: "VA", zipCode: "12345")
-        let geocode = Geocode(lng: 1, lat: 0)
-        let merchantToCreate = Merchant(merchantId: "", name: "Name", category: ["Cateogry"], address: address, geocode: geocode)
-        MerchantRequest().postMerchant(merchantToCreate, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let merchantResponse = response as BaseResponse<Merchant>?
-                let message = merchantResponse?.message
-                let merchantCreated = merchantResponse?.object
+    func testPostMerchant() async {
+        do {
+            let merchantToCreate = MerchantPostData(name: "Test Merchant")
+            if let merchantPostResponse = try await MerchantRequest().postMerchant(merchantToCreate) {
+                let message = merchantPostResponse.message
+                let merchantCreated = merchantPostResponse.objectCreated
                 print("\(message): \(merchantCreated)")
-                self.testPutMerchant(merchantToBeModified: merchantCreated!)
+                await self.testPutMerchant(merchantId: merchantCreated!.merchantId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutMerchant(merchantToBeModified: Merchant) {
-        merchantToBeModified.name = "Raul"
-        MerchantRequest().putMerchant(merchantToBeModified, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let accountResponse = response as BaseResponse<Merchant>?
-                let message = accountResponse?.message
-                let accountCreated = accountResponse?.object
-                print("\(message): \(accountCreated)")
+    func testPutMerchant(merchantId: String) async {
+        do {
+            let merchantToUpdate = MerchantPutData(name: "Updated Merchant")
+            if let merchantPutResponse = try await MerchantRequest().putMerchant(merchantId, merchantToUpdate) {
+                let message = merchantPutResponse.message
+                print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class TransfersTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllTransfersFromAccount()
+        await testGetAllTransfersFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d34859e63c5995587e8613", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    var account: Account = Account(accountId: "59df8251ceb8abe24251c1e6", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
     
-    func testGetTransfer(TransferId: String) {
-        TransferRequest().getTransfer(TransferId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let transfer = response as Transfer? {
-                    print(transfer)
-                    self.testPostTransfer()
+    func testGetTransfer(transferId: String) async {
+        do {
+            if let transfer = try await TransferRequest().getTransfer(transferId) {
+                print(transfer)
+                await self.testPostTransfer()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllTransfersFromAccount() async {
+        do {
+            if let transfers = try await TransferRequest().getTransfersFromAccountId(account.accountId) {
+                if transfers.count > 0 {
+                    let transfer = transfers[0]
+                    print(transfers)
+                    await self.testGetTransfer(transferId: transfer.transferId)
+                } else {
+                    print("No transfers found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllTransfersFromAccount() {
-        TransferRequest().getTransfersFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Transfer>? {
-                    if array.count > 0 {
-                        let transfer = array[0]
-                        print(array)
-                        self.testGetTransfer(TransferId: transfer.transferId)
-                    } else {
-                        print("No transfers found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostTransfer() {
-        let transferToCreate = Transfer(transferId: "", type: .Deposit, transactionDate: Date(), status: .Pending, medium: .Balance, payerId: "57d34859e63c5995587e8613", payeeId: "57d359e7e63c5995587e8620", amount: 12, description: "Desc")
-        TransferRequest().postTransfer(transferToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let transferResponse = response as BaseResponse<Transfer>?
-                let message = transferResponse?.message
-                let transferCreated = transferResponse?.object
+    func testPostTransfer() async {
+        do {
+            let transferToCreate = TransferPostData(medium: .Balance, payeeId: "5b181426f0cec56abfa418e3", amount: 20)
+            if let transferPostResponse = try await TransferRequest().postTransfer(account.accountId, transferToCreate) {
+                let message = transferPostResponse.message
+                let transferCreated = transferPostResponse.objectCreated
                 print("\(message): \(transferCreated)")
-                self.testPutTransfer(transfer: transferCreated!)
+                await self.testPutTransfer(transferId: transferCreated!.transferId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutTransfer(transfer: Transfer) {
-        transfer.medium = .Rewards
-        TransferRequest().putTransfer(transfer, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let transferResponse = response as BaseResponse<Transfer>?
-                let message = transferResponse?.message
+    func testPutTransfer(transferId: String) async {
+        do {
+            let transferToUpdate = TransferPutData(medium: .Balance, payeeId: "5b181426f0cec56abfa418e3", amount: 25)
+            if let transferPutResponse = try await TransferRequest().putTransfer(transferId, transferToUpdate) {
+                let message = transferPutResponse.message
                 print("\(message)")
-                self.testDeleteTransfer(transferId: transfer.transferId)
+                await self.testDeleteTransfer(transferId: transferId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteTransfer(transferId: String) {
-        TransferRequest().deleteTransfer(transferId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let TransferResponse = response as BaseResponse<Transfer>?
-                let message = TransferResponse?.message
+    func testDeleteTransfer(transferId: String) async {
+        do {
+            if let transferDeleteResponse = try await TransferRequest().deleteTransfer(transferId) {
+                let message = transferDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class WithdrawalsTests {
     let client = NSEClient.sharedInstance
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
         
-        testGetAllWithdrawalsFromAccount()
+        await testGetAllWithdrawalsFromAccount()
     }
     
-    var account: Account = Account(accountId: "57d34859e63c5995587e8613", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
+    var account: Account = Account(accountId: "59df8251ceb8abe24251c1e6", accountType:.CreditCard, nickname: "Hola", rewards: 10, balance: 100, accountNumber: "1234567890123456", customerId: "57d0c20d1fd43e204dd48282")
     
-    func testGetWithdrawal(WithdrawalId: String) {
-        WithdrawalRequest().getWithdrawal(WithdrawalId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let withdrawal = response as Withdrawal? {
-                    print(withdrawal)
-                    self.testPostWithdrawal()
+    func testGetWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawal = try await WithdrawalRequest().getWithdrawal(withdrawalId) {
+                print(withdrawal)
+                await self.testPostWithdrawal()
+            }
+        } catch let error as NSError {
+            print(error)
+        }
+    }
+    
+    func testGetAllWithdrawalsFromAccount() async {
+        do {
+            if let withdrawals = try await WithdrawalRequest().getWithdrawalsFromAccountId(account.accountId) {
+                if withdrawals.count > 0 {
+                    let withdrawal = withdrawals[0]
+                    print(withdrawals)
+                    await self.testGetWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                } else {
+                    print("No withdrawals found")
                 }
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testGetAllWithdrawalsFromAccount() {
-        WithdrawalRequest().getWithdrawalsFromAccountId(account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Withdrawal>? {
-                    if array.count > 0 {
-                        let withdrawal = array[0]
-                        print(array)
-                        self.testGetWithdrawal(WithdrawalId: withdrawal.withdrawalId)
-                    } else {
-                        print("No withdrawals found")
-                    }
-                }
-            }
-        })
-    }
-    
-    func testPostWithdrawal() {
-        let withdrawalToCreate = Withdrawal(withdrawalId: "", type: .Deposit, transactionDate: Date(), status: .Cancelled, medium: .Balance, payerId: "57d34859e63c5995587e8613", amount: 12, description: "Desc")
-        WithdrawalRequest().postWithdrawal(withdrawalToCreate, accountId: account.accountId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let withdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = withdrawalResponse?.message
-                let withdrawalCreated = withdrawalResponse?.object
+    func testPostWithdrawal() async {
+        do {
+            let withdrawalToCreate = WithdrawalPostData(medium: .Balance, amount: 20)
+            if let withdrawalPostResponse = try await WithdrawalRequest().postWithdrawal(account.accountId, withdrawalToCreate) {
+                let message = withdrawalPostResponse.message
+                let withdrawalCreated = withdrawalPostResponse.objectCreated
                 print("\(message): \(withdrawalCreated)")
-                self.testPutWithdrawal(withdrawal: withdrawalCreated!)
+                await self.testPutWithdrawal(withdrawalId: withdrawalCreated!.withdrawalId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testPutWithdrawal(withdrawal: Withdrawal) {
-        withdrawal.medium = .Rewards
-        WithdrawalRequest().putWithdrawal(withdrawal, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let withdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = withdrawalResponse?.message
+    func testPutWithdrawal(withdrawalId: String) async {
+        do {
+            let withdrawalToUpdate = WithdrawalPutData(medium: .Balance, amount: 25)
+            if let withdrawalPutResponse = try await WithdrawalRequest().putWithdrawal(withdrawalId, withdrawalToUpdate) {
+                let message = withdrawalPutResponse.message
                 print("\(message)")
-                self.testDeleteWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                await self.testDeleteWithdrawal(withdrawalId: withdrawalId)
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
     
-    func testDeleteWithdrawal(withdrawalId: String) {
-        WithdrawalRequest().deleteWithdrawal(withdrawalId, completion:{(response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                let WithdrawalResponse = response as BaseResponse<Withdrawal>?
-                let message = WithdrawalResponse?.message
+    func testDeleteWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawalDeleteResponse = try await WithdrawalRequest().deleteWithdrawal(withdrawalId) {
+                let message = withdrawalDeleteResponse.message
                 print("\(message)")
             }
-        })
+        } catch let error as NSError {
+            print(error)
+        }
     }
 }
 
 class EnterpriseAccountTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseAccountRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetAccounts()
+        await self.testGetAccounts()
     }
     
-    func testGetAccounts() {
-        let request = EnterpriseAccountRequest()
-        request.getAccounts(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Account>? {
-                    if array.count > 0 {
-                        let account = array[0] as Account?
-                        self.testGetAccount(accountId: account!.accountId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetAccounts() async {
+        do {
+            if let enterpriseAccountResponse = try await request.getAccounts() {
+                if enterpriseAccountResponse.results.count > 0 {
+                    let account = enterpriseAccountResponse.results[0]
+                    await self.testGetAccount(accountId: account.accountId)
+                    print(enterpriseAccountResponse.results)
+                } else {
+                    print("No accounts found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetAccount(accountId: String) {
-        var request = EnterpriseAccountRequest()
-        request.getAccount(accountId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Account? {
-                        print(account)
-                    }
-                }
+    func testGetAccount(accountId: String) async {
+        do {
+            if let account = try await request.getAccount(accountId) {
+                print(account)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseBillTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseBillRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetBills()
+        await self.testGetBills()
     }
     
-    func testGetBills() {
-        let request = EnterpriseBillRequest()
-        request.getBills(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Bill>? {
-                    if array.count > 0 {
-                        let bill = array[0] as Bill?
-                        self.testGetBill(billId: bill!.billId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetBills() async {
+        do {
+            if let enterpriseBillResponse = try await request.getBills() {
+                if enterpriseBillResponse.results.count > 0 {
+                    let bill = enterpriseBillResponse.results[0]
+                    await self.testGetBill(billId: bill.billId)
+                    print(enterpriseBillResponse.results)
+                } else {
+                    print("No bills found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetBill(billId: String) {
-        var request = EnterpriseBillRequest()
-        request.getBill(billId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Bill? {
-                        print(account)
-                    }
-                }
+    func testGetBill(billId: String) async {
+        do {
+            if let bill = try await request.getBill(billId) {
+                print(bill)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseCustomerTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseCustomerRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetCustomers()
+        await self.testGetCustomers()
     }
     
-    func testGetCustomers() {
-        let request = EnterpriseCustomerRequest()
-        request.getCustomers(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Customer>? {
-                    if array.count > 0 {
-                        let customer = array[0] as Customer?
-                        self.testGetCustomer(customerId: customer!.customerId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetCustomers() async {
+        do {
+            if let enterpriseCustomerResponse = try await request.getCustomers() {
+                if enterpriseCustomerResponse.results.count > 0 {
+                    let customer = enterpriseCustomerResponse.results[0]
+                    await self.testGetCustomer(customerId: customer.customerId)
+                    print(enterpriseCustomerResponse.results)
+                } else {
+                    print("No customers found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetCustomer(customerId: String) {
-        var request = EnterpriseCustomerRequest()
-        request.getCustomer(customerId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Customer? {
-                        print(account)
-                    }
-                }
+    func testGetCustomer(customerId: String) async {
+        do {
+            if let customer = try await request.getCustomer(customerId) {
+                print(customer)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseDepositTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseDepositRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetDeposits()
+        await self.testGetDeposits()
     }
     
-    func testGetDeposits() {
-        let request = EnterpriseDepositRequest()
-        request.getDeposits(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Deposit>? {
-                    if array.count > 0 {
-                        let deposit = array[0] as Deposit?
-                        self.testGetDeposit(depositId: deposit!.depositId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetDeposits() async {
+        do {
+            if let enterpriseDepositResponse = try await request.getDeposits() {
+                if enterpriseDepositResponse.results.count > 0 {
+                    let deposit = enterpriseDepositResponse.results[0]
+                    await self.testGetDeposit(depositId: deposit.depositId)
+                    print(enterpriseDepositResponse.results)
+                } else {
+                    print("No deposits found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetDeposit(depositId: String) {
-        var request = EnterpriseDepositRequest()
-        request.getDeposit(depositId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Deposit? {
-                        print(account)
-                    }
-                }
+    func testGetDeposit(depositId: String) async {
+        do {
+            if let deposit = try await request.getDeposit(depositId) {
+                print(deposit)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseMerchantTests {
     let client = NSEClient.sharedInstance
+    var request = EnterpriseMerchantRequest()
     
-    init() {
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetMerchants()
+        await self.testGetMerchants()
     }
     
-    func testGetMerchants() {
-        let request = EnterpriseMerchantRequest()
-        request.getMerchants(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Merchant>? {
-                    if array.count > 0 {
-                        let merchant = array[0] as Merchant?
-                        self.testGetMerchant(merchantId: merchant!.merchantId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetMerchants() async {
+        do {
+            if let enterpriseMerchantResponse = try await request.getMerchants() {
+                if enterpriseMerchantResponse.results.count > 0 {
+                    let merchant = enterpriseMerchantResponse.results[0]
+                    await self.testGetMerchant(merchantId: merchant.merchantId)
+                    print(enterpriseMerchantResponse.results)
+                } else {
+                    print("No merchants found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetMerchant(merchantId: String) {
-        var request = EnterpriseMerchantRequest()
-        request.getMerchant(merchantId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Merchant? {
-                        print(account)
-                    }
-                }
+    func testGetMerchant(merchantId: String) async {
+        do {
+            if let merchant = try await request.getMerchant(merchantId) {
+                print(merchant)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseTransferTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseTransferRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetTransfers()
+        await self.testGetTransfers()
     }
     
-    func testGetTransfers() {
-        let request = EnterpriseTransferRequest()
-        request.getTransfers(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Transfer>? {
-                    if array.count > 0 {
-                        let transfer = array[0] as Transfer?
-                        self.testGetTransfer(transferId: transfer!.transferId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetTransfers() async {
+        do {
+            if let enterpriseTransferResponse = try await request.getTransfers() {
+                if enterpriseTransferResponse.results.count > 0 {
+                    let transfer = enterpriseTransferResponse.results[0]
+                    await self.testGetTransfer(transferId: transfer.transferId)
+                    print(enterpriseTransferResponse.results)
+                } else {
+                    print("No transfers found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetTransfer(transferId: String) {
-        var request = EnterpriseTransferRequest()
-        request.getTransfer(transferId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Transfer? {
-                        print(account)
-                    }
-                }
+    func testGetTransfer(transferId: String) async {
+        do {
+            if let transfer = try await request.getTransfer(transferId) {
+                print(transfer)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }
 
 class EnterpriseWithdrawalTests {
     let client = NSEClient.sharedInstance
-    
-    init() {
+    var request = EnterpriseWithdrawalRequest()
+
+    init() async {
         client.setKey("bca7093ce9c023bb642d0734b29f1ad2")
-        self.testGetWithdrawals()
+        await self.testGetWithdrawals()
     }
     
-    func testGetWithdrawals() {
-        let request = EnterpriseWithdrawalRequest()
-        request.getWithdrawals(){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if let array = response as Array<Withdrawal>? {
-                    if array.count > 0 {
-                        let withdrawal = array[0] as Withdrawal?
-                        self.testGetWithdrawal(withdrawalId: withdrawal!.withdrawalId)
-                        print(array)
-                    } else {
-                        print("No accounts found")
-                    }
+    func testGetWithdrawals() async {
+        do {
+            if let enterpriseWithdrawalResponse = try await request.getWithdrawals() {
+                if enterpriseWithdrawalResponse.results.count > 0 {
+                    let withdrawal = enterpriseWithdrawalResponse.results[0]
+                    await self.testGetWithdrawal(withdrawalId: withdrawal.withdrawalId)
+                    print(enterpriseWithdrawalResponse.results)
+                } else {
+                    print("No withdrawals found")
                 }
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
     
-    func testGetWithdrawal(withdrawalId: String) {
-        var request = EnterpriseWithdrawalRequest()
-        request.getWithdrawal(withdrawalId){ (response, error) in
-            if (error != nil) {
-                print(error!)
-            } else {
-                if (error != nil) {
-                    print(error!)
-                } else {
-                    if let account = response as Withdrawal? {
-                        print(account)
-                    }
-                }
+    func testGetWithdrawal(withdrawalId: String) async {
+        do {
+            if let withdrawal = try await request.getWithdrawal(withdrawalId) {
+                print(withdrawal)
             }
+        } catch let error as NSError {
+            print(error)
         }
     }
 }

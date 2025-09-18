@@ -14,30 +14,44 @@ class SecondViewController: UIViewController {
     }
     
     @IBAction func testEnterpriseAccountsRequests(sender: AnyObject) {
-        let _ = EnterpriseAccountTests()
+        Task { @MainActor in
+            let _ = await EnterpriseAccountTests()
+        }
     }
     
     @IBAction func testEnterpriseBillsRequests(sender: AnyObject) {
-        let _ = EnterpriseBillTests()
+        Task { @MainActor in
+            let _ = await EnterpriseBillTests()
+        }
     }
     
     @IBAction func testEnterpriseCustomerRequests(sender: AnyObject) {
-        let _ = EnterpriseCustomerTests()
+        Task { @MainActor in
+            let _ = await EnterpriseCustomerTests()
+        }
     }
     
     @IBAction func testEnterpriseDepositsRequests(sender: AnyObject) {
-        let _ = EnterpriseDepositTests()
+        Task { @MainActor in
+            let _ = await EnterpriseDepositTests()
+        }
     }
     
     @IBAction func testEnterpriseMerchantsRequests(sender: AnyObject) {
-        let _ = EnterpriseMerchantTests()
+        Task { @MainActor in
+            let _ = await EnterpriseMerchantTests()
+        }
     }
     
     @IBAction func testEnterpriseTransfersRequests(sender: AnyObject) {
-        let _ = EnterpriseTransferTests()
+        Task { @MainActor in
+            let _ = await EnterpriseTransferTests()
+        }
     }
     
     @IBAction func testEnterpriseWithdrawalsRequests(sender: AnyObject) {
-        let _ = EnterpriseWithdrawalTests()
+        Task { @MainActor in
+            let _ = await EnterpriseWithdrawalTests()
+        }
     }
 }

@@ -14,45 +14,67 @@ class ViewController: UIViewController {
     }
     
     @IBAction func testAccountsRequests(sender: AnyObject) {
-        let _ = AccountTests()
+        Task { @MainActor in
+            let _ = await AccountTests()
+        }
     }
     
     @IBAction func testAtmRequests(sender: AnyObject) {
-        let _ = ATMTests()
+        Task { @MainActor in
+            let _ = await ATMTests()
+        }
     }
     
     @IBAction func testBillRequests(sender: AnyObject) {
-        let _ = BillTests()
+        Task { @MainActor in
+            let _ = try await BillTests()
+        }
     }
     
     @IBAction func testBranchesRequests(sender: AnyObject) {
-        let _ = BranchTests()
+        Task { @MainActor in
+            let _ = await BranchTests()
+        }
     }
     
     @IBAction func testCustomersRequests(sender: AnyObject) {
-        let _ = CustomerTests()
+        Task { @MainActor in
+            let _ = await CustomerTests()
+        }
     }
 
     @IBAction func testDepositsRequests(sender: AnyObject) {
-        let _ = DepositsTests()
+        Task { @MainActor in
+            let _ = await DepositsTests()
+        }
     }
     
     @IBAction func testPurchasesRequests(sender: AnyObject) {
-        let _ = PurchasesTests()
+        Task { @MainActor in
+            let _ = await PurchasesTests()
+        }
     }
     
     @IBAction func testMerchantsRequests(sender: UIButton) {
-        let _ = MerchantTests()
+        Task { @MainActor in
+            let _ = await MerchantTests()
+        }
     }
     
     @IBAction func testTransfersRequests(sender: AnyObject) {
-        let _ = TransfersTests()
+        Task { @MainActor in
+            let _ = await TransfersTests()
+        }
     }
     
     @IBAction func testWithdrawalsRequests(sender: UIButton) {
-        let _ = WithdrawalsTests()
+        Task { @MainActor in
+            let _ = await WithdrawalsTests()
+        }
     }
     @IBAction func testLoanRequests(sender: UIButton) {
-        let _ = LoanTests()
+        Task { @MainActor in
+            let _ = await LoanTests()
+        }
     }
 }
