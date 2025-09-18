@@ -1,6 +1,6 @@
 # Nessie-iOS-Wrapper
 
-### Note: This SDK is Swift 5.0, please use Xcode 10.2 and later 😀
+### Note: This SDK is Swift 5.0, please use Xcode 14.0 and later 😀
 
 ## Synopsis
 
